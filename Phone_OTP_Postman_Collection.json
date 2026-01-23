@@ -1,0 +1,248 @@
+{
+  "info": {
+    "_postman_id": "phone-otp-verification",
+    "name": "Phone OTP Verification API",
+    "description": "Complete Phone OTP Verification System Testing",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "1️⃣ Send Phone OTP",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "if (pm.response.code === 200) {",
+              "    var jsonData = pm.response.json();",
+              "    pm.environment.set('otp', jsonData.otp);",
+              "    pm.environment.set('expiresIn', jsonData.expiresIn);",
+              "    console.log('OTP saved to environment: ' + jsonData.otp);",
+              "}"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"phone\": \"+918765432101\"\n}"
+        },
+        "url": {
+          "raw": "http://localhost:5000/api/auth/send-phone-otp",
+          "protocol": "http",
+          "host": [
+            "localhost"
+          ],
+          "port": "5000",
+          "path": [
+            "api",
+            "auth",
+            "send-phone-otp"
+          ]
+        },
+        "description": "Send OTP to phone number\n\n**Valid Phone Formats:**\n- +91XXXXXXXXXX (India)\n- +1XXXXXXXXXX (USA)\n- +44XXXXXXXXXX (UK)\n\n**Response:**\n- OTP generated and sent via SMS\n- Expires in 300 seconds (5 minutes)\n- OTP shown only in development mode"
+      },
+      "response": []
+    },
+    {
+      "name": "2️⃣ Verify Phone OTP",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "if (pm.response.code === 200) {",
+              "    var jsonData = pm.response.json();",
+              "    pm.environment.set('token', jsonData.token);",
+              "    pm.environment.set('userId', jsonData.user.id);",
+              "    console.log('Token saved to environment');",
+              "}"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"phone\": \"+918765432101\",\n  \"otp\": \"{{otp}}\",\n  \"userId\": \"{{userId}}\"\n}"
+        },
+        "url": {
+          "raw": "http://localhost:5000/api/auth/verify-phone-otp",
+          "protocol": "http",
+          "host": [
+            "localhost"
+          ],
+          "port": "5000",
+          "path": [
+            "api",
+            "auth",
+            "verify-phone-otp"
+          ]
+        },
+        "description": "Verify OTP and mark phone as verified\n\n**Requirements:**\n- OTP must be 6 digits\n- OTP must not be expired\n- Phone must match send request\n- Max 5 failed attempts\n\n**Response:**\n- JWT token if successful\n- User object with isPhoneVerified: true"
+      },
+      "response": []
+    },
+    {
+      "name": "3️⃣ Resend Phone OTP",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"phone\": \"+918765432101\"\n}"
+        },
+        "url": {
+          "raw": "http://localhost:5000/api/auth/resend-phone-otp",
+          "protocol": "http",
+          "host": [
+            "localhost"
+          ],
+          "port": "5000",
+          "path": [
+            "api",
+            "auth",
+            "resend-phone-otp"
+          ]
+        },
+        "description": "Resend OTP to same phone number\n\n**When to use:**\n- User didn't receive OTP\n- OTP is about to expire\n- User made too many failed attempts\n\n**Rate Limits:**\n- Can resend only after 1 minute or OTP expiration\n- Resets attempt counter\n- Generates new OTP"
+      },
+      "response": []
+    },
+    {
+      "name": "❌ Error Test - Invalid Phone",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"phone\": \"8765432101\"\n}"
+        },
+        "url": {
+          "raw": "http://localhost:5000/api/auth/send-phone-otp",
+          "protocol": "http",
+          "host": [
+            "localhost"
+          ],
+          "port": "5000",
+          "path": [
+            "api",
+            "auth",
+            "send-phone-otp"
+          ]
+        },
+        "description": "Test: Invalid phone format\n\nExpected Response: 400 Bad Request\n\nPhone must include +country_code"
+      },
+      "response": []
+    },
+    {
+      "name": "❌ Error Test - Invalid OTP",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"phone\": \"+918765432101\",\n  \"otp\": \"000000\",\n  \"userId\": \"{{userId}}\"\n}"
+        },
+        "url": {
+          "raw": "http://localhost:5000/api/auth/verify-phone-otp",
+          "protocol": "http",
+          "host": [
+            "localhost"
+          ],
+          "port": "5000",
+          "path": [
+            "api",
+            "auth",
+            "verify-phone-otp"
+          ]
+        },
+        "description": "Test: Wrong OTP submitted\n\nExpected Response: 400 Bad Request\n\nMessage: Invalid OTP. X attempts remaining."
+      },
+      "response": []
+    },
+    {
+      "name": "❌ Error Test - Rate Limited",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"phone\": \"+918765432101\"\n}"
+        },
+        "url": {
+          "raw": "http://localhost:5000/api/auth/send-phone-otp",
+          "protocol": "http",
+          "host": [
+            "localhost"
+          ],
+          "port": "5000",
+          "path": [
+            "api",
+            "auth",
+            "send-phone-otp"
+          ]
+        },
+        "description": "Test: Send OTP twice within 1 minute\n\n**Steps:**\n1. Send first request - should succeed\n2. Send second request immediately - should be rate limited\n\nExpected Response: 429 Too Many Requests\n\nMessage: Please wait before requesting a new OTP"
+      },
+      "response": []
+    }
+  ],
+  "variable": [
+    {
+      "key": "otp",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "token",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "userId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "expiresIn",
+      "value": "300",
+      "type": "string"
+    }
+  ]
+}
