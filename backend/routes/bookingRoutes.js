@@ -5,6 +5,18 @@ const { verifyToken } = require('../middleware/authMiddleware');
 
 const router = express.Router();
 
+let io = null;
+let activeUsers = null;
+
+// Initialize Socket.IO instance and active users map
+router.setIO = (socketIO) => {
+  io = socketIO;
+};
+
+router.setActiveUsers = (users) => {
+  activeUsers = users;
+};
+
 // CREATE BOOKING
 router.post('/create', verifyToken, async (req, res) => {
   try {
@@ -126,6 +138,24 @@ router.put('/:bookingId/status', verifyToken, async (req, res) => {
 
     await booking.populate('tutorId', 'name email');
     await booking.populate('learnerId', 'name email');
+
+    // 🎯 EMIT REVIEW TRIGGER when tutor completes session
+    if (status === 'completed' && io && activeUsers) {
+      const tutorId = booking.tutorId._id.toString();
+      const learnerId = booking.learnerId._id.toString();
+      const tutorName = booking.tutorId.name;
+
+      // Emit to learner to trigger review modal
+      io.emit('session_completed', {
+        sessionId: booking._id.toString(),
+        learnerId,
+        tutorId,
+        tutorName,
+        subject: booking.subject,
+      });
+
+      console.log(`✅ Session completion event emitted - Review trigger sent for session ${booking._id}`);
+    }
 
     res.status(200).json({
       message: 'Booking updated',

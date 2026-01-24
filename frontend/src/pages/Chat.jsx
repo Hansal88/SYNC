@@ -17,6 +17,8 @@ import {
   offUserTyping,
   onUserStopTyping,
   offUserStopTyping,
+  onNewMessage,
+  offNewMessage,
 } from '../services/socketService';
 import { useMessageDelivery } from '../hooks/useMessageDelivery';
 import { useMessageVisibility } from '../hooks/useMessageVisibility';
@@ -286,6 +288,35 @@ export default function Chat() {
       }
     };
   }, [currentUser?._id]);
+
+  // Listen for incoming messages in real-time to refresh conversations list
+  useEffect(() => {
+    const handleNewIncomingMessage = (data) => {
+      // Refresh conversations list to show updated message
+      const fetchConversations = async () => {
+        try {
+          const response = await chatService.getConversations();
+          const fetchedConversations = response.data || [];
+          setConversations(fetchedConversations);
+          
+          // Optionally refresh unread count
+          const unreadResponse = await chatService.getUnreadCount();
+          setUnreadCount(unreadResponse.unreadCount || 0);
+        } catch (err) {
+          console.error('Error refreshing conversations after new message:', err);
+        }
+      };
+
+      console.log('📬 New message received in real-time, refreshing conversations...', data);
+      fetchConversations();
+    };
+
+    onNewMessage(handleNewIncomingMessage);
+
+    return () => {
+      offNewMessage();
+    };
+  }, []);
 
   // Get messages for selected conversation
   useEffect(() => {

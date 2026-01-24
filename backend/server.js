@@ -12,6 +12,8 @@ const tutorRoutes = require('./routes/tutorRoutes');
 const chatRoutes = require('./routes/chatRoutes');
 const bookingRoutes = require('./routes/bookingRoutes');
 const requestRoutes = require('./routes/requestRoutes');
+const studyMaterialRoutes = require('./routes/studyMaterialRoutes');
+const reviewRoutes = require('./routes/reviewRoutes');
 
 const app = express();
 const server = http.createServer(app);
@@ -84,11 +86,20 @@ app.use('/api/messages', chatRoutes);
 
 app.use('/api/bookings', bookingRoutes);
 
+// Study Material Routes
+app.use('/api/study-material', studyMaterialRoutes);
+
 // Initialize request routes with io instance
 const requestRoutesModule = require('./routes/requestRoutes');
 requestRoutesModule.setIO(io);
 requestRoutesModule.setActiveUsers(activeUsers);
 app.use('/api/requests', requestRoutes);
+
+// Review Routes (with io instance)
+const reviewRoutesModule = require('./routes/reviewRoutes');
+reviewRoutesModule.setIO(io);
+reviewRoutesModule.setActiveUsers(activeUsers);
+app.use('/api/reviews', reviewRoutes);
 
 app.use('/api', userRoutes);
 
@@ -212,6 +223,42 @@ io.on('connection', (socket) => {
 
     // Broadcast updated live stats
     io.emit('live_stats_update', getLiveStats());
+  });
+
+  // Session marked as completed - Trigger review modal for learner
+  socket.on('session_completed', (data) => {
+    const { sessionId, learnerId, tutorId, tutorName } = data;
+    const learnerUser = activeUsers.get(learnerId);
+
+    if (learnerUser) {
+      io.to(learnerUser.socketId).emit('review_modal_trigger', {
+        sessionId,
+        tutorId,
+        tutorName,
+        message: 'Session completed! Please rate your tutor.',
+        timestamp: new Date().toISOString(),
+      });
+      console.log(`⭐ Review modal triggered for learner ${learnerId} for session ${sessionId}`);
+    } else {
+      console.log(`📌 Learner ${learnerId} offline - review will be requested on next login`);
+    }
+  });
+
+  // Tutor sends review completion notification
+  socket.on('review_completed', (data) => {
+    const { tutorId, sessionId, rating, reviewCount } = data;
+    const tutorUser = activeUsers.get(tutorId);
+
+    if (tutorUser) {
+      io.to(tutorUser.socketId).emit('review_received_notification', {
+        sessionId,
+        rating,
+        totalReviews: reviewCount,
+        message: `New review received! (${rating}★)`,
+        timestamp: new Date().toISOString(),
+      });
+      console.log(`📬 Review notification sent to tutor ${tutorId}`);
+    }
   });
 
   // ========== MESSAGE DELIVERY & READ RECEIPTS ==========

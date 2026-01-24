@@ -12,37 +12,56 @@ import {
   FileText,
   Filter,
   ArrowUpRight,
-  Bell,
   X,
-  Plus
+  Plus,
+  Trash2,
+  Bell
 } from 'lucide-react';
 import profileAPI from '../../services/profileService';
 import { useRequests } from '../../context/RequestContext';
-import { emitUserOnline } from '../../services/socketService';
+import { emitUserOnline, onTutorRatingUpdated, offTutorRatingUpdated, onReviewCompleted, offReviewCompleted } from '../../services/socketService';
+import { useTheme } from '../../context/ThemeContext';
 import RequestCard from '../../components/RequestCard';
 import LiveLearnerStats from '../../components/LiveLearnerStats';
 
 const TutorDashboard = () => {
   const context = useOutletContext();
   const navigate = useNavigate();
-  const isDark = context ? context.isDark : false;
-  const [activeTab, setActiveTab] = useState('Overview');
+  const { isDarkMode } = useTheme();
   const [userName, setUserName] = useState('');
   const [tutorData, setTutorData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [showNotificationsModal, setShowNotificationsModal] = useState(false);
+  
+  // 🎯 RATING SYSTEM: Real-time rating state
+  const [tutorRating, setTutorRating] = useState('0/5');
+  const [recentReview, setRecentReview] = useState(null);
+  const [showReviewNotification, setShowReviewNotification] = useState(false);
+  
+  // Notes State
+  const [notes, setNotes] = useState([]);
+  const [newNoteTitle, setNewNoteTitle] = useState('');
+  const [newNoteContent, setNewNoteContent] = useState('');
+  const [isAddingNote, setIsAddingNote] = useState(false);
+  const [editingNote, setEditingNote] = useState(null);
+  const [showSessionModal, setShowSessionModal] = useState(false);
+  const [sessionLearner, setSessionLearner] = useState('');
+  const [sessionSubject, setSessionSubject] = useState('');
+  const [sessionDate, setSessionDate] = useState('');
+  const [sessionStartTime, setSessionStartTime] = useState('');
+  const [sessionStartPeriod, setSessionStartPeriod] = useState('AM');
+  const [sessionEndTime, setSessionEndTime] = useState('');
+  const [sessionEndPeriod, setSessionEndPeriod] = useState('AM');
+  const [upcomingSessions, setUpcomingSessions] = useState([
+   
+  ]);
+
   const {
     incomingRequests,
     fetchIncomingRequests,
     handleAcceptRequest,
     handleRejectRequest,
   } = useRequests();
-  const [notifications] = useState([
-    { id: 1, learner: 'John Doe', message: 'Booked a session for tomorrow at 2 PM', time: '5 mins ago', type: 'booking', bookingTime: '2 PM' },
-    { id: 2, learner: 'Sarah Smith', message: 'Completed the previous session', time: '1 hour ago', type: 'completed', rating: 5 },
-    { id: 3, learner: 'Mike Johnson', message: 'Requested to reschedule session', time: '2 hours ago', type: 'reschedule', from: '3 PM', to: '4 PM' },
-  ]);
 
   useEffect(() => {
     const checkAuthAndFetchData = async () => {
@@ -58,17 +77,27 @@ const TutorDashboard = () => {
       }
 
       setUserName(storedName);
-
-      // Emit user online status
       emitUserOnline(userId, 'tutor');
+
+      // Load notes from localStorage
+      const savedNotes = JSON.parse(localStorage.getItem('tutorNotes') || '[]');
+      setNotes(savedNotes);
+
+      // Load sessions from localStorage
+      const savedSessions = JSON.parse(localStorage.getItem('tutorSessions') || '[]');
+      setUpcomingSessions(savedSessions);
 
       try {
         const data = await profileAPI.getTutorProfile();
         setTutorData(data.tutor);
         
-        // Fetch incoming requests
-        await fetchIncomingRequests();
+        // 🎯 SET INITIAL RATING FROM TUTOR PROFILE
+        if (data.tutor?.ratingStats?.averageRating) {
+          const rating = data.tutor.ratingStats.averageRating.toFixed(1);
+          setTutorRating(`${rating}/5`);
+        }
         
+        await fetchIncomingRequests();
         setLoading(false);
       } catch (err) {
         console.error('Error fetching tutor profile:', err);
@@ -78,7 +107,6 @@ const TutorDashboard = () => {
     };
 
     checkAuthAndFetchData();
-
     window.addEventListener('pageshow', checkAuthAndFetchData);
     window.addEventListener('focus', checkAuthAndFetchData);
 
@@ -87,6 +115,194 @@ const TutorDashboard = () => {
       window.removeEventListener('focus', checkAuthAndFetchData);
     };
   }, [navigate, fetchIncomingRequests]);
+
+  // 🎯 SOCKET LISTENERS: Real-time rating updates
+  useEffect(() => {
+    // Listen for tutor rating updates
+    const handleTutorRatingUpdated = (data) => {
+      console.log('⭐ Tutor rating updated in real-time:', data);
+      
+      if (data?.averageRating) {
+        const rating = data.averageRating.toFixed(1);
+        setTutorRating(`${rating}/5`);
+        
+        // Also update tutorData
+        setTutorData(prev => ({
+          ...prev,
+          ratingStats: {
+            averageRating: data.averageRating,
+            totalReviews: data.totalReviews,
+            ratingBreakdown: data.ratingBreakdown
+          }
+        }));
+      }
+    };
+
+    // Listen for review completion (immediate notification)
+    const handleReviewCompleted = (data) => {
+      console.log('📬 New review received!', data);
+      
+      // Store recent review
+      setRecentReview({
+        learnerName: data.learnerName,
+        rating: data.rating,
+        reviewText: data.reviewText,
+        subject: data.subject
+      });
+      
+      // Show notification toast
+      setShowReviewNotification(true);
+      
+      // Auto-hide notification after 5 seconds
+      const timer = setTimeout(() => {
+        setShowReviewNotification(false);
+      }, 5000);
+      
+      // Update rating in real-time
+      if (data?.rating) {
+        handleTutorRatingUpdated(data);
+      }
+      
+      return () => clearTimeout(timer);
+    };
+
+    // Register event listeners
+    onTutorRatingUpdated(handleTutorRatingUpdated);
+    onReviewCompleted(handleReviewCompleted);
+
+    // Cleanup listeners on unmount
+    return () => {
+      offTutorRatingUpdated();
+      offReviewCompleted();
+    };
+  }, []);
+
+
+  // Notes Functions
+  const saveNote = () => {
+    if (newNoteTitle.trim() && newNoteContent.trim()) {
+      if (editingNote) {
+        // Update existing note
+        const updatedNotes = notes.map(note => 
+          note.id === editingNote.id 
+            ? { ...note, title: newNoteTitle, content: newNoteContent }
+            : note
+        );
+        setNotes(updatedNotes);
+        localStorage.setItem('tutorNotes', JSON.stringify(updatedNotes));
+      } else {
+        // Add new note
+        const note = { id: Date.now(), title: newNoteTitle, content: newNoteContent };
+        const updatedNotes = [...notes, note];
+        setNotes(updatedNotes);
+        localStorage.setItem('tutorNotes', JSON.stringify(updatedNotes));
+      }
+      setNewNoteTitle('');
+      setNewNoteContent('');
+      setIsAddingNote(false);
+      setEditingNote(null);
+    }
+  };
+
+  const deleteNote = (id) => {
+    const updatedNotes = notes.filter(note => note.id !== id);
+    setNotes(updatedNotes);
+    localStorage.setItem('tutorNotes', JSON.stringify(updatedNotes));
+  };
+
+  const openNoteForEdit = (note) => {
+    setEditingNote(note);
+    setNewNoteTitle(note.title);
+    setNewNoteContent(note.content);
+    setIsAddingNote(true);
+  };
+
+  const closeNoteModal = () => {
+    setIsAddingNote(false);
+    setEditingNote(null);
+    setNewNoteTitle('');
+    setNewNoteContent('');
+  };
+
+  // Session functions
+  const convertTo24Hour = (time, period) => {
+    const [hours, minutes] = time.split(':');
+    let hour24 = parseInt(hours);
+    
+    if (period === 'PM' && hour24 !== 12) {
+      hour24 += 12;
+    } else if (period === 'AM' && hour24 === 12) {
+      hour24 = 0;
+    }
+    
+    return `${hour24.toString().padStart(2, '0')}:${minutes}`;
+  };
+
+  const addSession = () => {
+    if (sessionLearner.trim() && sessionSubject.trim() && sessionDate && sessionStartTime && sessionEndTime) {
+      const startTime24 = convertTo24Hour(sessionStartTime, sessionStartPeriod);
+      const endTime24 = convertTo24Hour(sessionEndTime, sessionEndPeriod);
+      
+      const startDateTime = `${sessionDate}T${startTime24}:00`;
+      const endDateTime = `${sessionDate}T${endTime24}:00`;
+      
+      const newSession = {
+        id: Date.now(),
+        name: sessionLearner,
+        subject: sessionSubject,
+        startTime: startDateTime,
+        endTime: endDateTime
+      };
+      const updatedSessions = [...upcomingSessions, newSession];
+      setUpcomingSessions(updatedSessions);
+      localStorage.setItem('tutorSessions', JSON.stringify(updatedSessions));
+      
+      // Reset form
+      setSessionLearner('');
+      setSessionSubject('');
+      setSessionDate('');
+      setSessionStartTime('');
+      setSessionStartPeriod('AM');
+      setSessionEndTime('');
+      setSessionEndPeriod('AM');
+      setShowSessionModal(false);
+    }
+  };
+
+  const getTimeUntilSession = (startTime) => {
+    const now = new Date();
+    const sessionTime = new Date(startTime);
+    const diffMs = sessionTime - now;
+    
+    if (diffMs <= 0) return "Session started";
+    
+    const diffMins = Math.floor(diffMs / (1000 * 60));
+    const diffHours = Math.floor(diffMins / 60);
+    const diffDays = Math.floor(diffHours / 24);
+    const remainingHours = diffHours % 24;
+    const remainingMins = diffMins % 60;
+    
+    if (diffDays > 0) {
+      return `In ${diffDays}d ${remainingHours}h`;
+    } else if (diffHours > 0) {
+      return `In ${diffHours}h ${remainingMins}m`;
+    } else if (diffMins > 0) {
+      return `In ${diffMins}m`;
+    } else {
+      const diffSecs = Math.floor(diffMs / 1000);
+      return `In ${diffSecs}s`;
+    }
+  };
+
+  const getSessionsTodayCount = () => {
+    const today = new Date();
+    const todayString = today.toISOString().split('T')[0]; // Get YYYY-MM-DD format
+    
+    return upcomingSessions.filter(session => {
+      const sessionDate = new Date(session.startTime).toISOString().split('T')[0];
+      return sessionDate === todayString;
+    }).length;
+  };
 
   if (loading) {
     return (
@@ -105,12 +321,7 @@ const TutorDashboard = () => {
   }
 
   return (
-    <div className="space-y-8 relative min-h-screen">
-      {/* Live Learner Stats */}
-      <div className="bg-gradient-to-r from-slate-50 to-slate-100 dark:from-slate-800 dark:to-slate-900 rounded-2xl p-6 border border-slate-200 dark:border-slate-700">
-        <LiveLearnerStats />
-      </div>
-
+    <div className="space-y-8 relative min-h-screen dashboard-fade-in">
       {/* Incoming Requests Section */}
       {incomingRequests.length > 0 && (
         <div className="space-y-4">
@@ -123,19 +334,10 @@ const TutorDashboard = () => {
                 key={request._id}
                 request={request}
                 onAccept={(requestId) =>
-                  handleAcceptRequest(
-                    requestId,
-                    localStorage.getItem('userId'),
-                    request.learnerId._id
-                  )
+                  handleAcceptRequest(requestId, localStorage.getItem('userId'), request.learnerId._id)
                 }
                 onReject={(requestId, reason) =>
-                  handleRejectRequest(
-                    requestId,
-                    localStorage.getItem('userId'),
-                    request.learnerId._id,
-                    reason
-                  )
+                  handleRejectRequest(requestId, localStorage.getItem('userId'), request.learnerId._id, reason)
                 }
               />
             ))}
@@ -143,142 +345,59 @@ const TutorDashboard = () => {
         </div>
       )}
 
-      {/* Floating Action Button */}
-      <div className="fixed bottom-8 right-8 z-40 flex flex-col gap-4 items-end">
-        <button 
-          onClick={() => setShowNotificationsModal(true)}
-          className="group relative w-14 h-14 rounded-full bg-gradient-to-br from-blue-600 to-blue-700 text-white shadow-lg shadow-blue-500/40 hover:shadow-blue-500/60 hover:scale-110 transition-all duration-300 flex items-center justify-center overflow-hidden"
-          title="View Notifications"
-        >
-          <Bell size={24} />
-          <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white text-xs rounded-full flex items-center justify-center font-bold">
-            {notifications.length}
-          </span>
-        </button>
-      </div>
-
-      {/* Notifications Modal */}
-      {showNotificationsModal && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-end">
-          <div className="bg-white dark:bg-slate-900 w-full md:w-96 max-h-[80vh] rounded-t-3xl md:rounded-2xl overflow-y-auto">
-            <div className="p-6 border-b border-slate-200 dark:border-slate-800 flex justify-between items-center sticky top-0 bg-white dark:bg-slate-900">
-              <h2 className="text-2xl font-black text-slate-900 dark:text-white">Notifications</h2>
-              <button 
-                onClick={() => setShowNotificationsModal(false)}
-                className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors"
-              >
-                <X size={24} className="text-slate-600 dark:text-slate-400" />
-              </button>
-            </div>
-
-            <div className="divide-y divide-slate-200 dark:divide-slate-800">
-              {notifications.length > 0 ? (
-                notifications.map((notif) => (
-                  <div key={notif.id} className="p-4 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="flex-1">
-                        <p className="font-bold text-slate-900 dark:text-white">{notif.learner}</p>
-                        <p className="text-slate-600 dark:text-slate-400 text-sm mt-1">{notif.message}</p>
-                        {notif.type === 'booking' && notif.bookingTime && (
-                          <div className="flex items-center gap-2 mt-2 text-xs text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20 px-3 py-1.5 rounded-lg w-fit">
-                            <Calendar size={14} />
-                            Session at {notif.bookingTime}
-                          </div>
-                        )}
-                        {notif.type === 'completed' && notif.rating && (
-                          <div className="flex items-center gap-1 mt-2">
-                            {[...Array(notif.rating)].map((_, i) => (
-                              <span key={i} className="text-yellow-400">⭐</span>
-                            ))}
-                          </div>
-                        )}
-                        {notif.type === 'reschedule' && (
-                          <div className="flex items-center gap-2 mt-2 text-xs text-orange-600 dark:text-orange-400 bg-orange-50 dark:bg-orange-900/20 px-3 py-1.5 rounded-lg w-fit">
-                            <Clock size={14} />
-                            Reschedule: {notif.from} → {notif.to}
-                          </div>
-                        )}
-                        <p className="text-[10px] text-slate-500 dark:text-slate-500 mt-2">{notif.time}</p>
-                      </div>
-                      <button className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs rounded-lg font-bold transition-colors">
-                        View
-                      </button>
-                    </div>
-                  </div>
-                ))
-              ) : (
-                <div className="p-12 text-center">
-                  <Bell size={32} className="mx-auto text-slate-300 dark:text-slate-600 mb-2" />
-                  <p className="text-slate-500 dark:text-slate-400">No notifications yet</p>
-                </div>
-              )}
-            </div>
-          </div>
+      {/* First Row: Welcome and Learner Activity */}
+      <div className="grid grid-cols-1 md:grid-cols-5 gap-8">
+        <div className={`md:col-span-2 px-6 py-12 rounded-3xl shadow-lg flex flex-col h-full welcome-glow ${isDarkMode ? 'bg-slate-900 text-white' : 'bg-blue-50 text-slate-900 border border-blue-200'}`}>
+          <h1 className="text-4xl font-black mb-2">Welcome back, {userName}!</h1>
+          <p className={isDarkMode ? 'text-blue-100' : 'text-slate-600'}>Track sessions, engage learners, and grow your impact.</p>
         </div>
-      )}
-
-      {/* Main Header */}
-      <div className="bg-gradient-to-r from-blue-600 to-purple-600 dark:from-blue-900 dark:to-purple-900 text-white px-6 py-12 rounded-3xl shadow-lg">
-        <h1 className="text-4xl font-black mb-2">Welcome back, {userName}! 👋</h1>
-        <p className="text-blue-100 dark:text-blue-200">Here is your teaching dashboard</p>
+        <div className={`md:col-span-3 px-6 py-12 rounded-3xl shadow-lg flex flex-col h-full hover-glow card-hover ${isDarkMode ? 'bg-slate-900 text-white' : 'bg-white border border-slate-200'}`}>
+          <LiveLearnerStats />
+        </div>
       </div>
 
-      {/* Stats Overview */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-        <StatCard title="Total Students" value="24" icon={<Users size={24} />} />
-        <StatCard title="Sessions Today" value="3" icon={<Calendar size={24} />} />
-        <StatCard title="Completed" value="45" icon={<CheckCircle size={24} />} />
-        <StatCard title="Rating" value="4.9/5" icon={<Star size={24} />} />
-      </div>
-
-      {/* Main Content */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* Left Column - Larger */}
-        <div className="lg:col-span-2 space-y-6">
-          {/* Upcoming Sessions */}
-          <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-6">
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-2xl font-black text-slate-900 dark:text-white">Upcoming Sessions</h2>
-              <button className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors">
-                <Filter size={20} className="text-slate-600 dark:text-slate-400" />
-              </button>
+      {/* Main Content Area */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-stretch">
+        
+        {/* Column 1: Upcoming Sessions */}
+        <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-6 flex flex-col hover-glow card-hover">
+          <div className="flex items-center justify-between mb-6">
+            <div className="flex items-center gap-2 text-blue-600 dark:text-blue-400">
+              <Clock size={16} />
+              <p className="text-[10px] font-bold uppercase tracking-widest">Upcoming Sessions</p>
             </div>
-            <div className="space-y-3">
-              <SessionCard name="Alex Johnson" subject="Mathematics" time="2:00 PM" />
-              <SessionCard name="Emma Wilson" subject="Physics" time="3:30 PM" />
-              <SessionCard name="Lucas Brown" subject="Chemistry" time="4:45 PM" />
-            </div>
+            <button
+              onClick={() => setShowSessionModal(true)}
+              className="w-8 h-8 rounded-lg bg-blue-600 text-white flex items-center justify-center hover:bg-blue-700 transition-colors"
+            >
+              <Plus size={16} />
+            </button>
           </div>
-
-          {/* Performance Metrics */}
-          <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-6">
-            <h2 className="text-2xl font-black text-slate-900 dark:text-white mb-6">Your Performance</h2>
-            <div className="space-y-4">
-              <SkillProgress label="Student Satisfaction" value={85} />
-              <SkillProgress label="Lesson Quality" value={92} />
-              <SkillProgress label="Punctuality" value={98} />
-              <SkillProgress label="Completion Rate" value={88} />
-            </div>
+          <div className="space-y-3 flex-1">
+            {upcomingSessions.length === 0 ? (
+              <div className="h-full flex flex-col items-center justify-center text-slate-400 dark:text-slate-500 py-8">
+                <Clock size={32} className="mb-2 opacity-20" />
+                <p className="text-sm">No upcoming sessions</p>
+                <p className="text-xs mt-1">Click + to schedule a session</p>
+              </div>
+            ) : (
+              upcomingSessions.map(session => (
+                <SessionCard 
+                  key={session.id}
+                  name={session.name} 
+                  subject={session.subject} 
+                  time={getTimeUntilSession(session.startTime)} 
+                />
+              ))
+            )}
           </div>
         </div>
 
-        {/* Right Column */}
-        <div className="space-y-6">
-          {/* Quick Actions */}
-          <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-6">
-            <h3 className="text-lg font-black text-slate-900 dark:text-white mb-4">Quick Actions</h3>
-            <div className="space-y-3">
-              <button className="w-full py-3 px-4 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-bold transition-colors flex items-center justify-center gap-2">
-                <Plus size={20} /> Schedule Session
-              </button>
-              <button className="w-full py-3 px-4 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-900 dark:text-white rounded-lg font-bold transition-colors flex items-center justify-center gap-2">
-                <MessageSquare size={20} /> Send Message
-              </button>
-            </div>
-          </div>
-
-          {/* Recent Activity */}
-          <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-6">
+        {/* Column 2: Sessions Today + Recent Activity */}
+        <div className="space-y-6 flex flex-col">
+          <StatCard title="Sessions Today" value={getSessionsTodayCount()} icon={<Calendar size={24} />} />
+          
+          <div className="flex-1 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-6 hover-glow card-hover">
             <h3 className="text-lg font-black text-slate-900 dark:text-white mb-4">Recent Activity</h3>
             <div className="space-y-3 text-sm">
               <p className="text-slate-600 dark:text-slate-400">✅ Session completed with John</p>
@@ -287,7 +406,297 @@ const TutorDashboard = () => {
             </div>
           </div>
         </div>
+
+        {/* Column 3: Rating + Sticky Notes */}
+        <div className="space-y-6 flex flex-col">
+          {/* 🎯 DYNAMIC RATING CARD with real-time updates */}
+          <div className="group p-6 bg-gradient-to-br from-slate-50 to-slate-100/50 dark:from-slate-800/50 dark:to-slate-900/50 rounded-2xl border border-slate-100 dark:border-slate-800 hover-glow card-hover flex flex-col justify-center relative overflow-hidden">
+            {/* Animated background pulse on new review */}
+            {showReviewNotification && (
+              <div className="absolute inset-0 bg-gradient-to-r from-amber-400/10 to-yellow-400/10 animate-pulse"></div>
+            )}
+            
+            <div className="flex items-start justify-between relative z-10">
+              <div>
+                <p className="text-slate-600 dark:text-slate-400 font-semibold text-sm">Rating</p>
+                <h3 className="text-3xl font-black text-slate-900 dark:text-white mt-2">{tutorRating}</h3>
+                {tutorData?.ratingStats?.totalReviews && (
+                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                    ({tutorData.ratingStats.totalReviews} {tutorData.ratingStats.totalReviews === 1 ? 'review' : 'reviews'})
+                  </p>
+                )}
+              </div>
+              <div className="p-3 rounded-xl bg-blue-100 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400">
+                <Star size={24} />
+              </div>
+            </div>
+          </div>
+          
+          {/* 🔔 REVIEW NOTIFICATION TOAST */}
+          {showReviewNotification && recentReview && (
+            <div className="animate-slide-down p-4 bg-gradient-to-r from-amber-50 to-yellow-50 dark:from-amber-900/20 dark:to-yellow-900/20 border-l-4 border-amber-400 rounded-lg shadow-lg">
+              <div className="flex items-start gap-3">
+                <div className="p-2 bg-amber-400 rounded-lg text-white flex-shrink-0 mt-0.5">
+                  <Bell size={16} />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="font-bold text-amber-900 dark:text-amber-200 text-sm">New Review Received!</p>
+                  <p className="text-amber-800 dark:text-amber-300 text-sm mt-1">
+                    <span className="font-semibold">{recentReview.learnerName}</span> gave you <span className="font-bold">{recentReview.rating}★</span> for {recentReview.subject}
+                  </p>
+                  {recentReview.reviewText && (
+                    <p className="text-amber-700 dark:text-amber-400 text-xs mt-2 italic">
+                      "{recentReview.reviewText}"
+                    </p>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+          
+          {/* Sticky Notes Block */}
+          <div className="flex-1 max-h-80 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-6 flex flex-col hover-glow card-hover">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-black text-slate-900 dark:text-white">Sticky Notes</h3>
+              <button 
+                onClick={() => setIsAddingNote(true)}
+                className="p-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
+              >
+                <Plus size={16} />
+              </button>
+            </div>
+
+            <div className="space-y-3 flex-1 overflow-y-auto hidden-scrollbar">
+              {notes.length === 0 ? (
+                <div className="h-full flex flex-col items-center justify-center text-slate-400 dark:text-slate-500 py-4">
+                  <FileText size={32} className="mb-2 opacity-20" />
+                  <p className="text-xs">No notes yet</p>
+                  <p className="text-xs mt-1">Click + to add your first note</p>
+                </div>
+              ) : (
+                notes.map(note => (
+                  <div key={note.id} className="group flex items-center justify-between py-2 px-3 bg-yellow-50 dark:bg-yellow-900/10 border border-yellow-100 dark:border-yellow-900/20 rounded-lg transition-all hover:shadow-sm hover:bg-yellow-100 dark:hover:bg-yellow-900/20 cursor-pointer" onClick={() => openNoteForEdit(note)}>
+                    <p className="text-sm font-medium text-yellow-800 dark:text-yellow-200/90 truncate flex-1">{note.title}</p>
+                    <button 
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        deleteNote(note.id);
+                      }}
+                      className="opacity-0 group-hover:opacity-100 text-slate-400 hover:text-red-500 transition-all duration-200 ml-2"
+                    >
+                      <Trash2 size={14} />
+                    </button>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+        </div>
+
       </div>
+
+      {/* Add/Edit Note Modal */}
+      {isAddingNote && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-6 max-w-md w-full">
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-xl font-black text-slate-900 dark:text-white">
+                {editingNote ? 'Edit Note' : 'Add New Note'}
+              </h3>
+              <button 
+                onClick={closeNoteModal}
+                className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors"
+              >
+                <X size={20} className="text-slate-600 dark:text-slate-400" />
+              </button>
+            </div>
+            
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+                  Title
+                </label>
+                <input 
+                  autoFocus
+                  value={newNoteTitle}
+                  onChange={(e) => setNewNoteTitle(e.target.value)}
+                  placeholder="Enter note title..."
+                  className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 text-slate-900 dark:text-white"
+                />
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+                  Description
+                </label>
+                <textarea 
+                  value={newNoteContent}
+                  onChange={(e) => setNewNoteContent(e.target.value)}
+                  placeholder="Enter note description..."
+                  rows={4}
+                  className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 text-slate-900 dark:text-white resize-none"
+                />
+              </div>
+              
+              <div className="flex gap-3 pt-4">
+                <button 
+                  onClick={saveNote}
+                  disabled={!newNoteTitle.trim() || !newNoteContent.trim()}
+                  className="flex-1 p-2 bg-green-600 hover:bg-green-700 disabled:bg-slate-400 disabled:cursor-not-allowed text-white rounded-lg transition-colors text-sm font-medium"
+                >
+                  {editingNote ? 'Update Note' : 'Save Note'}
+                </button>
+                <button 
+                  onClick={closeNoteModal}
+                  className="p-2 bg-slate-400 hover:bg-slate-500 text-white rounded-lg transition-colors"
+                >
+                  <X size={16} />
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Add Session Modal */}
+      {showSessionModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-8 max-w-lg w-full shadow-2xl">
+            <div className="flex items-center justify-between mb-8">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-full bg-blue-100 dark:bg-blue-900/20 flex items-center justify-center">
+                  <Clock size={20} className="text-blue-600 dark:text-blue-400" />
+                </div>
+                <div>
+                  <h3 className="text-xl font-black text-slate-900 dark:text-white">Schedule New Session</h3>
+                  <p className="text-sm text-slate-500 dark:text-slate-400">Set up a learning session with your student</p>
+                </div>
+              </div>
+              <button 
+                onClick={() => setShowSessionModal(false)}
+                className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors"
+              >
+                <X size={20} className="text-slate-600 dark:text-slate-400" />
+              </button>
+            </div>
+            
+            <div className="space-y-6">
+              {/* Learner Name */}
+              <div className="space-y-2">
+                <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300">
+                  👤 Learner Name
+                </label>
+                <input 
+                  value={sessionLearner}
+                  onChange={(e) => setSessionLearner(e.target.value)}
+                  placeholder="Enter learner's full name..."
+                  className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-slate-900 dark:text-white transition-all"
+                />
+              </div>
+              
+              {/* Subject */}
+              <div className="space-y-2">
+                <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300">
+                  📚 Subject
+                </label>
+                <input 
+                  value={sessionSubject}
+                  onChange={(e) => setSessionSubject(e.target.value)}
+                  placeholder="What will you teach? (e.g., Mathematics, Physics)..."
+                  className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-slate-900 dark:text-white transition-all"
+                />
+              </div>
+
+              {/* Date */}
+              <div className="space-y-2">
+                <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300">
+                  📅 Session Date
+                </label>
+                <input 
+                  type="date"
+                  value={sessionDate}
+                  onChange={(e) => setSessionDate(e.target.value)}
+                  min={new Date().toISOString().split('T')[0]}
+                  className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-slate-900 dark:text-white transition-all"
+                />
+              </div>
+
+              {/* Time Section */}
+              <div className="space-y-4">
+                <h4 className="text-sm font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-2">
+                  🕐 Session Time
+                </h4>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {/* Start Time */}
+                  <div className="space-y-3">
+                    <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 uppercase tracking-wide">
+                      Start Time
+                    </label>
+                    <div className="flex gap-2">
+                      <input 
+                        type="time"
+                        value={sessionStartTime}
+                        onChange={(e) => setSessionStartTime(e.target.value)}
+                        className="flex-1 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 text-slate-900 dark:text-white"
+                      />
+                      <select
+                        value={sessionStartPeriod}
+                        onChange={(e) => setSessionStartPeriod(e.target.value)}
+                        className="w-16 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-2 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 text-slate-900 dark:text-white"
+                      >
+                        <option value="AM">AM</option>
+                        <option value="PM">PM</option>
+                      </select>
+                    </div>
+                  </div>
+                  
+                  {/* End Time */}
+                  <div className="space-y-3">
+                    <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 uppercase tracking-wide">
+                      End Time
+                    </label>
+                    <div className="flex gap-2">
+                      <input 
+                        type="time"
+                        value={sessionEndTime}
+                        onChange={(e) => setSessionEndTime(e.target.value)}
+                        className="flex-1 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 text-slate-900 dark:text-white"
+                      />
+                      <select
+                        value={sessionEndPeriod}
+                        onChange={(e) => setSessionEndPeriod(e.target.value)}
+                        className="w-16 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-2 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 text-slate-900 dark:text-white"
+                      >
+                        <option value="AM">AM</option>
+                        <option value="PM">PM</option>
+                      </select>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              
+              {/* Action Buttons */}
+              <div className="flex gap-3 pt-6 border-t border-slate-200 dark:border-slate-700">
+                <button 
+                  onClick={addSession}
+                  disabled={!sessionLearner.trim() || !sessionSubject.trim() || !sessionDate || !sessionStartTime || !sessionEndTime}
+                  className="flex-1 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 disabled:from-slate-400 disabled:to-slate-500 disabled:cursor-not-allowed text-white rounded-xl py-3 px-6 font-semibold text-sm transition-all duration-200 transform hover:scale-105 disabled:transform-none shadow-lg hover:shadow-xl"
+                >
+                  📅 Schedule Session
+                </button>
+                <button 
+                  onClick={() => setShowSessionModal(false)}
+                  className="px-6 py-3 bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-300 rounded-xl font-medium text-sm transition-colors"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 };
@@ -295,7 +704,7 @@ const TutorDashboard = () => {
 // Sub-Components
 function StatCard({ title, value, icon }) {
   return (
-    <div className="group p-6 bg-gradient-to-br from-slate-50 to-slate-100/50 dark:from-slate-800/50 dark:to-slate-900/50 rounded-2xl border border-slate-100 dark:border-slate-800 hover:shadow-lg hover:scale-105 transition-all duration-300 hover:-translate-y-1">
+    <div className="group p-6 bg-gradient-to-br from-slate-50 to-slate-100/50 dark:from-slate-800/50 dark:to-slate-900/50 rounded-2xl border border-slate-100 dark:border-slate-800 hover-glow card-hover flex flex-col justify-center">
       <div className="flex items-start justify-between">
         <div>
           <p className="text-slate-600 dark:text-slate-400 font-semibold text-sm">{title}</p>
@@ -318,23 +727,6 @@ function SessionCard({ name, subject, time }) {
       </div>
       <div className="text-sm font-bold px-3 py-1.5 bg-blue-600 text-white rounded-lg">
         {time}
-      </div>
-    </div>
-  );
-}
-
-function SkillProgress({ label, value }) {
-  return (
-    <div className="space-y-2">
-      <div className="flex justify-between">
-        <span className="text-sm font-bold text-slate-600 dark:text-slate-400">{label}</span>
-        <span className="text-sm font-bold text-blue-600 dark:text-blue-400">{value}%</span>
-      </div>
-      <div className="h-2 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
-        <div 
-          className="h-full bg-gradient-to-r from-blue-500 to-purple-500 rounded-full transition-all duration-700"
-          style={{ width: value + '%' }}
-        />
       </div>
     </div>
   );

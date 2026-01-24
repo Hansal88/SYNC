@@ -4,6 +4,8 @@ import { Calendar, Clock, DollarSign, Check, X, AlertCircle, Briefcase, User, Me
 import { useTheme } from '../context/ThemeContext';
 import bookingService from '../services/bookingService';
 import profileService from '../services/profileService';
+import ReviewModal from '../components/ReviewModal';
+import useSessionReviewTrigger from '../hooks/useSessionReviewTrigger';
 
 export default function Bookings() {
   const navigate = useNavigate();
@@ -14,6 +16,9 @@ export default function Bookings() {
   const [error, setError] = useState('');
   const [filter, setFilter] = useState('all');
   const [currentUser, setCurrentUser] = useState(null);
+  
+  // 🎯 REVIEW TRIGGER INTEGRATION
+  const { pendingReviewSession, clearPendingReview } = useSessionReviewTrigger();
 
   useEffect(() => {
     const fetchCurrentUser = async () => {
@@ -125,6 +130,14 @@ export default function Bookings() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-slate-100 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950 transition-colors duration-500">
+      {/* 🎯 REVIEW MODAL - Auto-triggers when session is completed */}
+      {pendingReviewSession && (
+        <ReviewModal 
+          session={pendingReviewSession}
+          onClose={clearPendingReview}
+        />
+      )}
+
       {/* Animated Background Orbs */}
       <div className="fixed top-20 -left-40 w-80 h-80 bg-blue-300/20 dark:bg-blue-600/10 rounded-full blur-3xl -z-10 animate-pulse"></div>
       <div className="fixed bottom-20 -right-40 w-80 h-80 bg-purple-300/20 dark:bg-purple-600/10 rounded-full blur-3xl -z-10 animate-pulse delay-700"></div>
@@ -200,7 +213,11 @@ export default function Bookings() {
             </p>
             {userRole === 'learner' && (
               <button
-                onClick={() => navigate('/tutors')}
+                onClick={() => {
+                  const userRole = localStorage.getItem('userRole') || 'learner';
+                  const basePath = userRole === 'tutor' ? '/TutorDashboard' : '/dashboard/learner';
+                  navigate(basePath + '/tutors');
+                }}
                 className="px-6 py-3 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white rounded-full font-bold transition-all transform hover:scale-105 shadow-lg hover:shadow-xl"
               >
                 Explore Tutors →

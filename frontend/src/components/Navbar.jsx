@@ -52,9 +52,11 @@ const Navbar = () => {
         <div className="hidden md:flex items-center space-x-8 text-sm font-medium text-gray-600">
           {isLoggedIn ? (
             <>
-              <Link to="/tutors" className="hover:text-blue-600 transition-colors">Find Tutors</Link>
-              <Link to="/chat" className="hover:text-blue-600 transition-colors">Messages</Link>
-              <Link to="/bookings" className="hover:text-blue-600 transition-colors">Bookings</Link>
+              {localStorage.getItem('userRole') === 'learner' && (
+                <Link to="/dashboard/learner/tutors" className="hover:text-blue-600 transition-colors">Find Tutors</Link>
+              )}
+              <Link to={localStorage.getItem('userRole') === 'tutor' ? '/TutorDashboard/messages' : '/dashboard/learner/messages'} className="hover:text-blue-600 transition-colors">Messages</Link>
+              <Link to={localStorage.getItem('userRole') === 'tutor' ? '/TutorDashboard/bookings' : '/dashboard/learner/bookings'} className="hover:text-blue-600 transition-colors">Bookings</Link>
             </>
           ) : (
             <>
@@ -113,9 +115,11 @@ const Navbar = () => {
           {isLoggedIn ? (
             <>
               <p className="text-sm font-semibold text-gray-700 px-4 py-2">{userName}</p>
-              <Link to="/tutors" className="block text-sm font-semibold text-gray-700 px-4 py-2 hover:bg-gray-100 rounded-lg transition-colors">Find Tutors</Link>
-              <Link to="/chat" className="block text-sm font-semibold text-gray-700 px-4 py-2 hover:bg-gray-100 rounded-lg transition-colors">Messages</Link>
-              <Link to="/bookings" className="block text-sm font-semibold text-gray-700 px-4 py-2 hover:bg-gray-100 rounded-lg transition-colors">Bookings</Link>
+              {localStorage.getItem('userRole') === 'learner' && (
+                <Link to="/dashboard/learner/tutors" className="block text-sm font-semibold text-gray-700 px-4 py-2 hover:bg-gray-100 rounded-lg transition-colors">Find Tutors</Link>
+              )}
+              <Link to={localStorage.getItem('userRole') === 'tutor' ? '/TutorDashboard/messages' : '/dashboard/learner/messages'} className="block text-sm font-semibold text-gray-700 px-4 py-2 hover:bg-gray-100 rounded-lg transition-colors">Messages</Link>
+              <Link to={localStorage.getItem('userRole') === 'tutor' ? '/TutorDashboard/bookings' : '/dashboard/learner/bookings'} className="block text-sm font-semibold text-gray-700 px-4 py-2 hover:bg-gray-100 rounded-lg transition-colors">Bookings</Link>
               <button 
                 onClick={handleLogout}
                 className="w-full flex items-center space-x-2 text-sm font-semibold text-red-600 hover:text-red-700 px-4 py-2 transition-colors"

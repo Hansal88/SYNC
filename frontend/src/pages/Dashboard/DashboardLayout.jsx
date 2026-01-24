@@ -6,6 +6,7 @@ import {
 } from 'lucide-react';
 import { useTheme } from '../../context/ThemeContext';
 import chatService from '../../services/chatService';
+import { onNewMessage, offNewMessage } from '../../services/socketService';
 
 const DashboardLayout = () => {
   const navigate = useNavigate();
@@ -44,11 +45,11 @@ const DashboardLayout = () => {
         // Convert conversations to notifications
         const messageNotifications = conversations.map((conv, index) => ({
           id: index,
-          name: conv.participantName || conv.otherUserName || 'Unknown User',
+          name: conv.otherUser?.name || 'Unknown User',
           message: conv.lastMessage || 'No message',
           time: conv.lastMessageTime ? formatTime(conv.lastMessageTime) : 'just now',
           type: 'message',
-          userId: conv.participantId || conv.otherUserId,
+          userId: conv.otherUser?._id || conv.conversationId,
           unread: conv.unreadCount || 0,
         }));
         
@@ -65,10 +66,50 @@ const DashboardLayout = () => {
     // Fetch on mount
     fetchConversations();
     
-    // Poll for new messages every 5 seconds
-    const interval = setInterval(fetchConversations, 5000);
+    // Poll for new messages every 3 seconds (more responsive)
+    const interval = setInterval(fetchConversations, 3000);
     
     return () => clearInterval(interval);
+  }, []);
+
+  // Listen for incoming messages in real-time
+  useEffect(() => {
+    const handleNewIncomingMessage = (data) => {
+      console.log('📬 New message received in dashboard, refreshing conversations...', data);
+      
+      // Refresh conversations list immediately when new message arrives
+      const fetchConversations = async () => {
+        try {
+          const response = await chatService.getConversations();
+          const conversations = response.data || [];
+          
+          const messageNotifications = conversations.map((conv, index) => ({
+            id: index,
+            name: conv.otherUser?.name || 'Unknown User',
+            message: conv.lastMessage || 'No message',
+            time: conv.lastMessageTime ? formatTime(conv.lastMessageTime) : 'just now',
+            type: 'message',
+            userId: conv.otherUser?._id || conv.conversationId,
+            unread: conv.unreadCount || 0,
+          }));
+          
+          setNotifications(messageNotifications);
+          
+          const totalUnread = messageNotifications.reduce((sum, notif) => sum + notif.unread, 0);
+          setUnreadCount(totalUnread);
+        } catch (error) {
+          console.error('Error updating conversations:', error);
+        }
+      };
+
+      fetchConversations();
+    };
+
+    onNewMessage(handleNewIncomingMessage);
+
+    return () => {
+      offNewMessage();
+    };
   }, []);
 
   // Helper function to format time
@@ -114,7 +155,7 @@ const DashboardLayout = () => {
   const getHeaderContent = () => {
     const path = location.pathname;
     if (path.includes('messages') || path.includes('chat')) return { title: 'Messages', subtitle: 'Chat with tutors and learners.' };
-    if (path.includes('notes')) return { title: 'My Resources', subtitle: 'Review your course materials.' };
+    if (path.includes('study-material')) return { title: 'Study Material', subtitle: isTutor ? 'Manage your course materials and resources' : 'Access learning resources shared by your tutors' };
     if (path.includes('tutors')) return { title: 'Find Tutors', subtitle: 'Discover and book expert tutors.' };
     if (path.includes('bookings')) return { title: 'My Bookings', subtitle: 'Manage your sessions.' };
     return isTutor ? { title: 'Tutor Dashboard', subtitle: 'Monitor your pedagogical impact.' } : { title: 'Learner Dashboard', subtitle: 'Track your learning progress.' };
@@ -143,10 +184,10 @@ const DashboardLayout = () => {
           <nav className="space-y-1">
             {sidebarExpanded && <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest px-3 mb-4">{isTutor ? 'Teaching' : 'Learning'}</p>}
             <SidebarItem icon={<LayoutDashboard size={18} />} label="Dashboard" active={isActivePath(basePath)} onClick={() => navigate(basePath)} expanded={sidebarExpanded} />
-            {isTutor && <SidebarItem icon={<FileText size={18} />} label="My Resources" active={isActivePath(basePath + '/notes')} onClick={() => navigate(basePath + '/notes')} expanded={sidebarExpanded} />}
-            <SidebarItem icon={<MessageSquare size={18} />} label="Messages" active={isActivePath('/chat')} onClick={() => navigate('/chat')} expanded={sidebarExpanded} />
-            {isLearner && <SidebarItem icon={<Search size={18} />} label="Find Tutors" active={isActivePath('/tutors')} onClick={() => navigate('/tutors')} expanded={sidebarExpanded} />}
-            <SidebarItem icon={<Settings size={18} />} label="My Bookings" active={isActivePath('/bookings')} onClick={() => navigate('/bookings')} expanded={sidebarExpanded} />
+            <SidebarItem icon={<FileText size={18} />} label="Study Material" active={isActivePath(basePath + '/study-material')} onClick={() => navigate(basePath + '/study-material')} expanded={sidebarExpanded} />
+            <SidebarItem icon={<MessageSquare size={18} />} label="Messages" active={isActivePath(basePath + '/messages')} onClick={() => navigate(basePath + '/messages')} expanded={sidebarExpanded} />
+            {isLearner && <SidebarItem icon={<Search size={18} />} label="Find Tutors" active={isActivePath(basePath + '/tutors')} onClick={() => navigate(basePath + '/tutors')} expanded={sidebarExpanded} />}
+            <SidebarItem icon={<Settings size={18} />} label="My Bookings" active={isActivePath(basePath + '/bookings')} onClick={() => navigate(basePath + '/bookings')} expanded={sidebarExpanded} />
           </nav>
         </div>
 

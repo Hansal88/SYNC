@@ -468,7 +468,7 @@ const TutorProfile = () => {
             {/* Hourly Rate */}
             <div>
               <h3 className="text-xl font-bold text-slate-900 mb-4 flex items-center gap-2">
-                <DollarSign size={24} className="text-blue-600" />
+                <span className="text-blue-600 text-2xl font-bold">₹</span>
                 Teaching Rate
               </h3>
               {isEditing ? (
