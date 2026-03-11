@@ -96,3 +96,28 @@ const chatService = {
 };
 
 export default chatService;
+
+// AI CHAT FUNCTION
+export const sendAIMessage = async (message) => {
+  try {
+    const response = await fetch(
+      "http://localhost:5678/webhook/skill-exchange-chat",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          message: message
+        })
+      }
+    );
+
+    const data = await response.json();
+    return data;
+
+  } catch (error) {
+    console.error("AI error:", error);
+    throw error;
+  }
+};

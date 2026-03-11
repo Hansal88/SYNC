@@ -14,6 +14,7 @@ import Profile from "./pages/Profile";
 import Bookings from "./pages/Bookings";
 import TutorsList from "./pages/TutorsList";
 import StudyMaterial from "./pages/StudyMaterial";
+import ChatBotPage from "./pages/ChatBotPage";
 
 // Pages inside /pages/Dashboard
 import DashboardLayout from "./pages/Dashboard/DashboardLayout";
@@ -86,6 +87,9 @@ function AppRoutes() {
         <Route path="tutors" element={<TutorsList />} />
         <Route path="profile" element={<LearnerProfile />} />
       </Route>
+
+      {/* AI Chat Route */}
+      <Route path="/ai-chat" element={<ChatBotPage />} />
 
       {/* --- Legacy Routes Redirector Component --- */}
       <Route path="/chat" element={<LegacyRedirect page="messages" />} />

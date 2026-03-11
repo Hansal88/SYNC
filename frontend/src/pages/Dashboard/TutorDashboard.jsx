@@ -23,6 +23,7 @@ import { emitUserOnline, onTutorRatingUpdated, offTutorRatingUpdated, onReviewCo
 import { useTheme } from '../../context/ThemeContext';
 import RequestCard from '../../components/RequestCard';
 import LiveLearnerStats from '../../components/LiveLearnerStats';
+import ChatBot from '../../components/ChatBot';
 
 const TutorDashboard = () => {
   const context = useOutletContext();
@@ -493,6 +494,16 @@ const TutorDashboard = () => {
           </div>
         </div>
 
+      </div>
+
+      {/* AI Chat Assistant */}
+      <div className="space-y-4 mt-8">
+        <h2 className="text-2xl font-black text-slate-900 dark:text-white">
+          🤖 AI Chat Assistant
+        </h2>
+        <div className="max-w-2xl">
+          <ChatBot />
+        </div>
       </div>
 
       {/* Add/Edit Note Modal */}
