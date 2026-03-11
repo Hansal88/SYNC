@@ -20,25 +20,31 @@ export const useRealTimeNotifications = () => {
   // Handle new message notifications
   const handleNewMessage = useCallback(
     (data) => {
-      const { senderName, senderId, conversationId, preview } = data;
+      const { senderName, senderId, conversationId, messageContent, preview } = data;
 
       // Play sound if enabled
       if (soundEnabled) {
         playNotificationSound('message');
       }
 
-      // Add notification
+      // Get user role and determine base path
+      const userRole = localStorage.getItem('userRole') || 'learner';
+      const isTutor = userRole === 'tutor';
+      const basePath = isTutor ? '/TutorDashboard' : '/dashboard/learner';
+      const messagesPath = `${basePath}/messages`;
+
+      // Add notification with full message content
       addNotification({
         type: 'message',
         title: `New message from ${senderName}`,
-        message: preview || 'You have received a new message',
+        message: messageContent || preview || 'You have received a new message',
         duration: 6000,
         metadata: { senderName, senderId, conversationId },
         action: () => {
-          // Navigate to chat would happen at a higher level
-          window.location.href = `/chat/${senderId}`;
+          // Navigate to Messages section
+          window.location.href = messagesPath;
         },
-        actionLabel: 'View Message',
+        actionLabel: 'View Messages',
       });
 
       console.log('📬 New message notification:', senderName);

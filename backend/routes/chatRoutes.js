@@ -77,6 +77,9 @@ router.post('/send', verifyToken, async (req, res) => {
           senderName: message.senderId.name || message.senderId.email,
           senderId: message.senderId._id.toString(),
           conversationId: conversationId,
+          messageContent: messageType === 'file' 
+            ? `📎 ${fileName || 'File'}`
+            : content,
           preview: messageType === 'file' 
             ? `📎 ${fileName || 'File'}`
             : content.substring(0, 50)

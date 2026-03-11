@@ -48,6 +48,16 @@ export const emitUserOnline = (userId, role) => {
   console.log(`📱 Emitted user_online: ${userId} (${role})`);
 };
 
+export const emitTyping = (conversationId, userId, otherUserId) => {
+  getSocket().emit('typing', { conversationId, userId, otherUserId });
+  console.log(`⌨️ Emitted typing: ${userId} in conversation ${conversationId}`);
+};
+
+export const emitStopTyping = (conversationId, userId, otherUserId) => {
+  getSocket().emit('stop_typing', { conversationId, userId, otherUserId });
+  console.log(`⏹️ Emitted stop_typing: ${userId}`);
+};
+
 export const emitSendRequest = (tutorId, learnerId, request) => {
   getSocket().emit('send_request', { tutorId, learnerId, request });
   console.log(`📬 Emitted send_request to tutor: ${tutorId}`);
@@ -66,6 +76,16 @@ export const emitRejectRequest = (requestId, tutorId, learnerId, reason = '') =>
 export const emitSessionEnded = (userId) => {
   getSocket().emit('session_ended', { userId });
   console.log(`🏁 Emitted session_ended: ${userId}`);
+};
+
+export const emitMessageDelivered = (conversationId, userId, recipientId) => {
+  getSocket().emit('message_delivered', { conversationId, userId, recipientId });
+  console.log(`📬 Emitted message_delivered to ${recipientId}`);
+};
+
+export const emitMessageRead = (conversationId, userId) => {
+  getSocket().emit('message_read', { conversationId, userId });
+  console.log(`👁️ Emitted message_read by ${userId}`);
 };
 
 // Socket event listeners
@@ -89,6 +109,34 @@ export const onChatCreated = (callback) => {
   getSocket().on('chat_created', callback);
 };
 
+export const onUserTyping = (callback) => {
+  getSocket().on('typing', callback);
+};
+
+export const onUserStopTyping = (callback) => {
+  getSocket().on('stop_typing', callback);
+};
+
+export const onMessageDelivered = (callback) => {
+  getSocket().on('message_delivered', callback);
+};
+
+export const onMessageReadReceipt = (callback) => {
+  getSocket().on('message_read', callback);
+};
+
+export const onNewMessage = (callback) => {
+  getSocket().on('new_message', callback);
+};
+
+export const onTutorAvailabilityChanged = (callback) => {
+  getSocket().on('tutor_availability_changed', callback);
+};
+
+export const onNotification = (callback) => {
+  getSocket().on('notification', callback);
+};
+
 // Remove listeners
 export const offReceiveRequest = () => {
   getSocket().off('receive_request');
@@ -110,108 +158,90 @@ export const offChatCreated = () => {
   getSocket().off('chat_created');
 };
 
-// ========== REAL-TIME NOTIFICATION LISTENERS ==========
-// These are for real-time notifications (new messages, tutor availability)
+export const offUserTyping = () => {
+  getSocket().off('typing');
+};
 
-export const onNewMessage = (callback) => {
-  getSocket().on('new_message', callback);
+export const offUserStopTyping = () => {
+  getSocket().off('stop_typing');
+};
+
+export const offMessageDelivered = () => {
+  getSocket().off('message_delivered');
+};
+
+export const offMessageReadReceipt = () => {
+  getSocket().off('message_read');
+};
+
+// ============================================
+// Review System Events (Rating & Feedback)
+// ============================================
+
+export const onSessionCompleted = (callback) => {
+  getSocket().on('session_completed', callback);
+};
+
+export const offSessionCompleted = () => {
+  getSocket().off('session_completed');
+};
+
+export const onReviewModalTrigger = (callback) => {
+  getSocket().on('review_modal_trigger', callback);
+};
+
+export const offReviewModalTrigger = () => {
+  getSocket().off('review_modal_trigger');
+};
+
+export const onReviewRequested = (callback) => {
+  getSocket().on('review_requested', callback);
+};
+
+export const offReviewRequested = () => {
+  getSocket().off('review_requested');
+};
+
+export const onReviewReceived = (callback) => {
+  getSocket().on('review_received', callback);
+};
+
+export const offReviewReceived = () => {
+  getSocket().off('review_received');
+};
+
+export const onReviewCompleted = (callback) => {
+  getSocket().on('review_completed', callback);
+};
+
+export const offReviewCompleted = () => {
+  getSocket().off('review_completed');
+};
+
+export const onReviewReceivedNotification = (callback) => {
+  getSocket().on('review_received_notification', callback);
+};
+
+export const offReviewReceivedNotification = () => {
+  getSocket().off('review_received_notification');
+};
+
+export const onTutorRatingUpdated = (callback) => {
+  getSocket().on('tutor_rating_updated', callback);
+};
+
+export const offTutorRatingUpdated = () => {
+  getSocket().off('tutor_rating_updated');
 };
 
 export const offNewMessage = () => {
   getSocket().off('new_message');
 };
 
-export const onTutorAvailabilityChanged = (callback) => {
-  getSocket().on('tutor_availability_changed', callback);
-};
-
 export const offTutorAvailabilityChanged = () => {
   getSocket().off('tutor_availability_changed');
 };
 
-export const onNotification = (callback) => {
-  getSocket().on('notification', callback);
-};
-
 export const offNotification = () => {
   getSocket().off('notification');
-};
-
-// ========== MESSAGE DELIVERY & READ RECEIPTS ==========
-// These events track message delivery status and read receipts
-
-export const emitMessageDelivered = (conversationId, messageId, receiverId) => {
-  getSocket().emit('message_delivered', { conversationId, messageId, receiverId });
-  console.log(`📦 Emitted message_delivered: ${messageId}`);
-};
-
-export const emitMessageRead = (conversationId, messageId, receiverId) => {
-  getSocket().emit('message_read', { conversationId, messageId, receiverId });
-  console.log(`✓ Emitted message_read: ${messageId}`);
-};
-
-// Listen for delivery confirmation from receiver
-export const onMessageDelivered = (callback) => {
-  getSocket().on('message_delivered_confirmation', callback);
-};
-
-export const offMessageDelivered = () => {
-  getSocket().off('message_delivered_confirmation');
-};
-
-// Listen for read receipt from receiver
-export const onMessageReadReceipt = (callback) => {
-  getSocket().on('message_read_confirmation', callback);
-};
-
-export const offMessageReadReceipt = () => {
-  getSocket().off('message_read_confirmation');
-};
-
-// Listen for delivery failures
-export const onMessageDeliveryFailed = (callback) => {
-  getSocket().on('message_delivery_failed', callback);
-};
-
-export const offMessageDeliveryFailed = () => {
-  getSocket().off('message_delivery_failed');
-};
-
-// ========== TYPING INDICATORS ==========
-// Emit typing and stop typing events
-
-export const emitTyping = (conversationId, userId, recipientId) => {
-  getSocket().emit('user_typing', {
-    conversationId,
-    userId,
-    recipientId,
-  });
-  console.log(`✍️ Emitted user_typing: ${userId}`);
-};
-
-export const emitStopTyping = (conversationId, userId, recipientId) => {
-  getSocket().emit('user_stop_typing', {
-    conversationId,
-    userId,
-    recipientId,
-  });
-  console.log(`⏹️ Emitted user_stop_typing: ${userId}`);
-};
-
-// Listen for typing events
-export const onUserTyping = (callback) => {
-  getSocket().on('user_typing_notification', callback);
-};
-
-export const offUserTyping = () => {
-  getSocket().off('user_typing_notification');
-};
-
-// Listen for stop typing events
-export const onUserStopTyping = (callback) => {
-  getSocket().on('user_stop_typing_notification', callback);
-};
-
-export const offUserStopTyping = () => {
-  getSocket().off('user_stop_typing_notification');
 };

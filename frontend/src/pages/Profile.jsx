@@ -46,7 +46,9 @@ const Profile = () => {
 
   const handleMessage = () => {
     if (tutor?.userId?._id) {
-      navigate(`/chat/${tutor.userId._id}`);
+      const userRole = localStorage.getItem('userRole') || 'learner';
+      const basePath = userRole === 'tutor' ? '/TutorDashboard' : '/dashboard/learner';
+      navigate(`${basePath}/messages/${tutor.userId._id}`);
     }
   };
 
@@ -84,7 +86,11 @@ const Profile = () => {
             {error || 'Unable to load tutor profile'}
           </div>
           <button
-            onClick={() => navigate('/tutors')}
+            onClick={() => {
+              const userRole = localStorage.getItem('userRole') || 'learner';
+              const basePath = userRole === 'tutor' ? '/TutorDashboard' : '/dashboard/learner';
+              navigate(basePath + '/tutors');
+            }}
             className="mt-6 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
           >
             Back to Tutors List
@@ -191,7 +197,11 @@ const Profile = () => {
               </button>
 
               <button
-                onClick={() => navigate('/tutors')}
+                onClick={() => {
+                  const userRole = localStorage.getItem('userRole') || 'learner';
+                  const basePath = userRole === 'tutor' ? '/TutorDashboard' : '/dashboard/learner';
+                  navigate(basePath + '/tutors');
+                }}
                 className="py-3 px-6 bg-gray-200 hover:bg-gray-300 text-gray-800 rounded-lg font-semibold transition-colors"
               >
                 Back
@@ -207,7 +217,11 @@ const Profile = () => {
         tutorName={bookingModal.tutorName}
         hourlyRate={bookingModal.hourlyRate}
         onClose={() => setBookingModal({ ...bookingModal, isOpen: false })}
-        onSuccess={() => navigate('/bookings')}
+        onSuccess={() => {
+          const userRole = localStorage.getItem('userRole') || 'learner';
+          const basePath = userRole === 'tutor' ? '/TutorDashboard' : '/dashboard/learner';
+          navigate(basePath + '/bookings');
+        }}
       />
     </div>
   );

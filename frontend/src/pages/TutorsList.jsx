@@ -285,7 +285,9 @@ const TutorsList = () => {
         onSuccess={(message) => {
           setSuccessMessage(message);
           setTimeout(() => setSuccessMessage(''), 3000);
-          navigate('/bookings');
+          const userRole = localStorage.getItem('userRole') || 'learner';
+          const basePath = userRole === 'tutor' ? '/TutorDashboard' : '/dashboard/learner';
+          navigate(basePath + '/bookings');
         }}
       />
     </div>
@@ -370,8 +372,8 @@ const TutorCard = ({ tutor, isDarkMode, onViewProfile, onMessage, onBooking }) =
               <span className="font-semibold">{tutor.completedSessions} sessions</span>
             </div>
             <div className={isDarkMode ? "flex items-center gap-1 text-slate-400 group-hover:text-slate-300 transition-colors" : "flex items-center gap-1 text-slate-600 group-hover:text-slate-800 transition-colors"}>
-              <DollarSign size={16} className="text-green-500 transition-transform group-hover:scale-110" />
-              <span className="font-semibold">₹{tutor.hourlyRate}/hr</span>
+              <span className="text-green-500 text-lg font-bold transition-transform group-hover:scale-110">₹</span>
+              <span className="font-semibold">{tutor.hourlyRate}/hr</span>
             </div>
           </div>
 

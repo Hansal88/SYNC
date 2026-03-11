@@ -4,6 +4,59 @@ const { verifyToken } = require('../middleware/authMiddleware');
 
 const router = express.Router();
 
+// DEBUG: Check current user role
+router.get('/me/role', verifyToken, async (req, res) => {
+  try {
+    const user = await User.findById(req.userId).select('name email role');
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+    res.status(200).json({
+      message: 'Current user role',
+      user: {
+        id: user._id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+      },
+    });
+  } catch (error) {
+    res.status(500).json({ message: 'Error fetching user', error: error.message });
+  }
+});
+
+// DEBUG: Quick role update (for testing)
+router.post('/me/role/:newRole', verifyToken, async (req, res) => {
+  try {
+    const { newRole } = req.params;
+    const validRoles = ['learner', 'tutor'];
+    
+    if (!validRoles.includes(newRole.toLowerCase())) {
+      return res.status(400).json({ message: 'Invalid role. Must be "learner" or "tutor"' });
+    }
+
+    const user = await User.findByIdAndUpdate(
+      req.userId,
+      { role: newRole.toLowerCase() },
+      { new: true }
+    );
+
+    console.log(`✅ Role updated for user ${user.email}: ${newRole}`);
+
+    res.status(200).json({
+      message: 'Role updated successfully',
+      user: {
+        id: user._id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+      },
+    });
+  } catch (error) {
+    res.status(500).json({ message: 'Error updating role', error: error.message });
+  }
+});
+
 // CREATE - Add a new user
 router.post('/users', async (req, res) => {
   try {

@@ -1,5 +1,5 @@
 import React, { useEffect } from "react";
-import { Routes, Route, Navigate } from "react-router-dom";
+import { Routes, Route, Navigate, useNavigate, useParams } from "react-router-dom";
 import { ThemeProvider, useTheme } from "./context/ThemeContext";
 import { RequestProvider } from "./context/RequestContext";
 import { NotificationProvider } from "./context/NotificationContext";
@@ -13,6 +13,8 @@ import Chat from "./pages/Chat";
 import Profile from "./pages/Profile";
 import Bookings from "./pages/Bookings";
 import TutorsList from "./pages/TutorsList";
+import StudyMaterial from "./pages/StudyMaterial";
+import ChatBotPage from "./pages/ChatBotPage";
 
 // Pages inside /pages/Dashboard
 import DashboardLayout from "./pages/Dashboard/DashboardLayout";
@@ -31,6 +33,28 @@ import AppInitializer from "./components/AppInitializer";
 import { ConnectionStatusBanner } from "./components/ConnectionStatusBanner";
 import { useConnectionStatus } from "./hooks/useConnectionStatus";
 
+// Legacy redirect components for backward compatibility
+function LegacyRedirect({ page }) {
+  const navigate = useNavigate();
+  useEffect(() => {
+    const userRole = localStorage.getItem('userRole') || 'learner';
+    const basePath = userRole === 'tutor' ? '/TutorDashboard' : '/dashboard/learner';
+    navigate(`${basePath}/${page}`, { replace: true });
+  }, [navigate, page]);
+  return null;
+}
+
+function LegacyRedirectWithId({ page }) {
+  const navigate = useNavigate();
+  const { otherUserId } = useParams();
+  useEffect(() => {
+    const userRole = localStorage.getItem('userRole') || 'learner';
+    const basePath = userRole === 'tutor' ? '/TutorDashboard' : '/dashboard/learner';
+    navigate(`${basePath}/${page}/${otherUserId}`, { replace: true });
+  }, [navigate, page, otherUserId]);
+  return null;
+}
+
 function AppRoutes() {
   // Real-world logic: Detect the user role from storage
   const userAccountType = localStorage.getItem('userRole') || "tutor"; 
@@ -42,29 +66,36 @@ function AppRoutes() {
       <Route path="/login" element={<Login />} />
       <Route path="/signup" element={<Signup />} />
       <Route path="/verify-otp" element={<OTPVerification />} />
-      <Route path="/chat" element={<Chat />} />
-      <Route path="/chat/:otherUserId" element={<Chat />} />
-      <Route path="/bookings" element={<Bookings />} />
 
-      {/* --- Tutor Dashboard Routes --- */}
+      {/* --- Tutor Dashboard Routes (with sidebar) --- */}
       <Route path="/TutorDashboard" element={<DashboardLayout />}>
         <Route index element={<TutorDashboard />} />
-        <Route path="notes" element={<TutorNotes />} />
+        <Route path="study-material" element={<StudyMaterial />} />
         <Route path="messages" element={<Chat />} />
+        <Route path="messages/:otherUserId" element={<Chat />} />
+        <Route path="bookings" element={<Bookings />} />
         <Route path="profile" element={<TutorProfile />} />
       </Route>
 
-      {/* --- Learner Dashboard Routes --- */}
+      {/* --- Learner Dashboard Routes (with sidebar) --- */}
       <Route path="/dashboard/learner" element={<DashboardLayout />}>
         <Route index element={<LearnerDashboard />} />
+        <Route path="study-material" element={<StudyMaterial />} />
         <Route path="messages" element={<Chat />} />
+        <Route path="messages/:otherUserId" element={<Chat />} />
+        <Route path="bookings" element={<Bookings />} />
+        <Route path="tutors" element={<TutorsList />} />
         <Route path="profile" element={<LearnerProfile />} />
       </Route>
 
-      {/* --- Tutor List Route (Inside DashboardLayout) --- */}
-      <Route path="/tutors" element={<DashboardLayout />}>
-        <Route index element={<TutorsList />} />
-      </Route>
+      {/* AI Chat Route */}
+      <Route path="/ai-chat" element={<ChatBotPage />} />
+
+      {/* --- Legacy Routes Redirector Component --- */}
+      <Route path="/chat" element={<LegacyRedirect page="messages" />} />
+      <Route path="/chat/:otherUserId" element={<LegacyRedirectWithId page="messages" />} />
+      <Route path="/bookings" element={<LegacyRedirect page="bookings" />} />
+      <Route path="/tutors" element={<LegacyRedirect page="tutors" />} />
 
       {/* --- Tutor Profile Route --- */}
       <Route path="/tutor/:tutorId" element={<Profile />} />
