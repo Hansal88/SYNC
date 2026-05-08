@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { PlayCircle, Star } from "lucide-react";
+import { motion } from "framer-motion";
+import { PlayCircle, Star, Settings, GraduationCap } from "lucide-react";
 import profileAPI from "../../services/profileService";
 import { useRequests } from "../../context/RequestContext";
 import { emitUserOnline } from "../../services/socketService";
@@ -8,6 +9,9 @@ import LiveTutorStats from "../../components/LiveTutorStats";
 import RequestStatus from "../../components/RequestStatus";
 import DailyLearningStreak from "../../components/DailyLearningStreak";
 import ChatBot from "../../components/ChatBot";
+import GlassCard from "../../components/GlassCard";
+import SkeletonCard from "../../components/SkeletonCard";
+import AnimatedCard from "../../components/AnimatedCard";
 
 const LearnerDashboard = () => {
   const navigate = useNavigate();
@@ -47,7 +51,18 @@ const LearnerDashboard = () => {
         setLoading(false);
       } catch (err) {
         console.error("Error fetching learner profile:", err);
-        setError("Failed to load profile data");
+        // Set default learner data instead of error
+        setLearnerData({
+          userId: { name: 'Learner', email: '' },
+          bio: '',
+          interests: [],
+          learningGoals: [],
+          preferredSubjects: [],
+          availability: [],
+        });
+        if (fetchSentRequests) {
+          await fetchSentRequests();
+        }
         setLoading(false);
       }
     };
@@ -65,9 +80,42 @@ const LearnerDashboard = () => {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-96">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-      </div>
+      <motion.div
+        className="animate-in fade-in slide-in-from-bottom-4 duration-700 min-h-full"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 0.5 }}
+      >
+        <div className="w-full">
+          {/* Skeleton Welcome Section */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-10">
+            <div className="h-32 bg-gray-200 dark:bg-gray-700 rounded-3xl animate-pulse"></div>
+            <div className="h-32 bg-gray-200 dark:bg-gray-700 rounded-2xl animate-pulse"></div>
+          </div>
+
+          {/* Skeleton Requests */}
+          <div className="mb-10">
+            <div className="h-8 bg-gray-200 dark:bg-gray-700 rounded w-1/3 animate-pulse mb-4"></div>
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+              {[...Array(2)].map((_, index) => (
+                <SkeletonCard key={index} />
+              ))}
+            </div>
+          </div>
+
+          {/* Skeleton Stats */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 mb-12 max-w-2xl mx-auto">
+            <div className="h-24 bg-gray-200 dark:bg-gray-700 rounded-2xl animate-pulse"></div>
+            <div className="h-24 bg-gray-200 dark:bg-gray-700 rounded-2xl animate-pulse"></div>
+          </div>
+
+          {/* Skeleton Weekly Progress */}
+          <div className="max-w-4xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-8">
+            <div className="h-48 bg-gray-200 dark:bg-gray-700 rounded-2xl animate-pulse"></div>
+            <div className="h-48 bg-gray-200 dark:bg-gray-700 rounded-2xl animate-pulse"></div>
+          </div>
+        </div>
+      </motion.div>
     );
   }
 
@@ -80,57 +128,94 @@ const LearnerDashboard = () => {
   }
 
   return (
-    <div className="animate-in fade-in slide-in-from-bottom-4 duration-700 min-h-full">
+    <motion.div
+      className="animate-in fade-in slide-in-from-bottom-4 duration-700 min-h-full"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: 0.5 }}
+    >
 
       <div className="w-full">
 
         {/* Welcome Section */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-10">
 
-          <div className="bg-blue-50 p-8 rounded-3xl">
+          <AnimatedCard
+            initial={{ opacity: 0, x: -20 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.4, delay: 0.1 }}
+            className="bg-blue-50 p-8 rounded-3xl"
+          >
             <h1 className="text-3xl font-bold text-blue-600">
               Welcome back, {userName}!
             </h1>
             <p className="text-gray-600 mt-3">
               Here's your learning progress for today.
             </p>
-          </div>
+          </AnimatedCard>
 
-          <div className="bg-gray-100 p-6 rounded-2xl">
+          <AnimatedCard
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.4, delay: 0.2 }}
+            className="bg-gray-100 p-6 rounded-2xl"
+          >
             <LiveTutorStats />
-          </div>
+          </AnimatedCard>
 
         </div>
 
         {/* Requests */}
         {sentRequests.length > 0 && (
-          <div className="mb-10">
+          <motion.div
+            className="mb-10"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4, delay: 0.3 }}
+          >
             <h2 className="text-2xl font-bold mb-4">📬 My Learning Requests</h2>
             <RequestStatus requests={sentRequests} isLoading={loading} />
-          </div>
+          </motion.div>
         )}
 
         {/* Stats */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 mb-12 max-w-2xl mx-auto">
 
-          <StatCard
-            title="Skill Level"
-            value={learnerData?.skillLevel || "Beginner"}
-            icon={<Star size={20} />}
-          />
+          <AnimatedCard
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4, delay: 0.4 }}
+          >
+            <StatCard
+              title="Skill Level"
+              value={learnerData?.skillLevel || "Beginner"}
+              icon={<Star size={20} />}
+            />
+          </AnimatedCard>
 
-          <StatCard
-            title="Current Week"
-            value={`${learnerData?.currentWeekHours || 0}/${learnerData?.weeklyHourGoal || 10}h`}
-            icon={<PlayCircle size={20} />}
-          />
+          <AnimatedCard
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4, delay: 0.5 }}
+          >
+            <StatCard
+              title="Current Week"
+              value={`${learnerData?.currentWeekHours || 0}/${learnerData?.weeklyHourGoal || 10}h`}
+              icon={<PlayCircle size={20} />}
+            />
+          </AnimatedCard>
 
         </div>
 
         {/* Weekly Progress */}
         <div className="max-w-4xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-8">
 
-          <div className="bg-blue-600 text-white p-8 rounded-2xl">
+          <AnimatedCard
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4, delay: 0.6 }}
+            className="bg-blue-600 text-white p-8 rounded-2xl"
+          >
 
             <h4 className="font-bold mb-4 text-lg">
               Weekly Goal Progress
@@ -155,59 +240,74 @@ const LearnerDashboard = () => {
 
             </div>
 
-          </div>
+          </AnimatedCard>
 
-          <DailyLearningStreak learnerData={learnerData} />
+          <AnimatedCard
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4, delay: 0.7 }}
+          >
+            <DailyLearningStreak learnerData={learnerData} />
+          </AnimatedCard>
 
         </div>
 
       </div>
 
       {/* Floating Buttons */}
-      <div className="fixed bottom-8 right-8 flex flex-col gap-4">
+      <motion.div
+        className="fixed bottom-8 right-8 flex flex-col gap-4"
+        initial={{ opacity: 0, scale: 0.8 }}
+        animate={{ opacity: 1, scale: 1 }}
+        transition={{ duration: 0.3, delay: 0.8 }}
+      >
 
-        <a
+        <motion.a
           href="/profile"
           className="w-14 h-14 rounded-full bg-purple-600 text-white flex items-center justify-center shadow-lg"
+          whileHover={{ scale: 1.1 }}
+          whileTap={{ scale: 0.95 }}
         >
-          ⚙️
-        </a>
+          <Settings size={20} />
+        </motion.a>
 
-        <a
+        <motion.a
           href="/tutors"
           className="w-14 h-14 rounded-full bg-blue-600 text-white flex items-center justify-center shadow-lg"
+          whileHover={{ scale: 1.1 }}
+          whileTap={{ scale: 0.95 }}
         >
-          🎓
-        </a>
+          <GraduationCap size={20} />
+        </motion.a>
 
-      </div>
+      </motion.div>
 
       {/* 🤖 AI CHATBOT */}
-      <div className="fixed bottom-8 left-8 z-50 w-[360px]">
+      <motion.div
+        className="fixed bottom-8 left-8 z-50 w-[360px]"
+        initial={{ opacity: 0, x: -100 }}
+        animate={{ opacity: 1, x: 0 }}
+        transition={{ duration: 0.5, delay: 0.9 }}
+      >
         <ChatBot role="learner" />
-      </div>
+      </motion.div>
 
-    </div>
+    </motion.div>
   );
 };
 
 const StatCard = ({ title, value, icon }) => (
-  <div className="bg-white border p-6 rounded-2xl shadow-sm">
-
+  <GlassCard className="bg-white border p-6 rounded-2xl shadow-sm">
     <div className="flex items-center justify-between">
-
       <div>
         <p className="text-gray-500 text-sm">{title}</p>
         <p className="text-2xl font-bold text-blue-600 mt-2">{value}</p>
       </div>
-
       <div className="text-blue-500 opacity-60">
         {icon}
       </div>
-
     </div>
-
-  </div>
+  </GlassCard>
 );
 
 export default LearnerDashboard;

@@ -1,6 +1,8 @@
 import axios from 'axios';
+import { API_BASE_URL as BASE_API_URL, BACKEND_URL } from '../config/api';
 
-const API_BASE_URL = 'http://localhost:5000/api/messages';
+const API_BASE_URL = `${BASE_API_URL}/messages`;
+const AI_WEBHOOK_URL = import.meta.env.VITE_AI_WEBHOOK_URL || `${BACKEND_URL}/webhook/skill-exchange-chat`;
 
 const getAuthHeader = () => {
   const token = localStorage.getItem('token');
@@ -101,9 +103,10 @@ export default chatService;
 export const sendAIMessage = async (message) => {
   try {
     const response = await fetch(
-      "http://localhost:5678/webhook/skill-exchange-chat",
+      import.meta.env.VITE_AI_WEBHOOK_URL || `${BACKEND_URL}/webhook/skill-exchange-chat`,
       {
         method: "POST",
+        credentials: 'include',
         headers: {
           "Content-Type": "application/json"
         },

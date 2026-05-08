@@ -14,9 +14,15 @@ const requestRoutes = require('./routes/requestRoutes');
 
 const app = express();
 const server = http.createServer(app);
+const allowedOrigins = [
+  'http://localhost:5173',
+  'http://localhost:5174',
+  'https://sync-wheat-three.vercel.app',
+  'https://sync-qtmpxtbob-hansal88s-projects.vercel.app',
+].filter(Boolean);
 const io = socketIO(server, {
   cors: {
-    origin: 'http://localhost:5173',
+    origin: allowedOrigins,
     credentials: true,
   },
 });
@@ -26,7 +32,10 @@ const PORT = process.env.PORT || 5000;
 const activeUsers = new Map(); // userId -> { socketId, role, isOnline, isInSession }
 
 // Middleware
-app.use(cors());
+app.use(cors({
+  origin: allowedOrigins,
+  credentials: true,
+}));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 

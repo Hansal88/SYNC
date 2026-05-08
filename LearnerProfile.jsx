@@ -4,6 +4,8 @@ import { Edit, Save, X, BookOpen, Target, Award, TrendingUp, Mail, Check, Loader
 import profileService from '../../services/profileService';
 import axios from 'axios';
 
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://YOUR_RENDER_BACKEND_URL.onrender.com';
+
 const LearnerProfile = () => {
   const navigate = useNavigate();
   const [isEditing, setIsEditing] = useState(false);
@@ -86,7 +88,7 @@ const LearnerProfile = () => {
       setVerifySending(true);
       setVerifyError('');
       
-      const response = await axios.post('http://localhost:5000/api/auth/resend-otp', {
+      const response = await axios.post(`${API_BASE_URL}/auth/resend-otp`, {
         email: profileData.email,
       });
       
@@ -132,7 +134,7 @@ const LearnerProfile = () => {
       setVerifyingEmail(true);
       setVerifyError('');
       
-      const response = await axios.post('http://localhost:5000/api/auth/verify-otp', {
+      const response = await axios.post(`${API_BASE_URL}/auth/verify-otp`, {
         email: profileData.email,
         otp: otpString,
       });

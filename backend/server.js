@@ -21,9 +21,16 @@ const aiChatRoutes = require('./routes/aiChatRoutes'); // 🤖 AI CHAT ROUTE
 const app = express();
 const server = http.createServer(app);
 
+const allowedOrigins = [
+  'http://localhost:5173',
+  'http://localhost:5174',
+  'https://sync-wheat-three.vercel.app',
+  'https://sync-qtmpxtbob-hansal88s-projects.vercel.app',
+].filter(Boolean);
+
 const io = socketIO(server, {
   cors: {
-    origin: ['http://localhost:5173', 'http://localhost:5174'],
+    origin: allowedOrigins,
     credentials: true,
   },
 });
@@ -35,7 +42,7 @@ const activeUsers = new Map();
 
 // ================= MIDDLEWARE =================
 app.use(cors({
-  origin: ['http://localhost:5173', 'http://localhost:5174'],
+  origin: allowedOrigins,
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization'],

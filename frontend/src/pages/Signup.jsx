@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from "react";
 import axios from "axios";
 import { useNavigate, Link } from "react-router-dom";
+
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://YOUR_RENDER_BACKEND_URL.onrender.com';
 import { 
   UserPlus, Mail, Lock, User, GraduationCap, 
   Eye, EyeOff, Phone, ChevronRight, Check, BookOpen 
@@ -106,7 +108,7 @@ const Signup = () => {
       console.log('🔐 [SIGNUP] Email:', trimmedEmail);
       console.log('🔐 [SIGNUP] Sending request to backend...');
       
-      const response = await axios.post("http://localhost:5000/api/auth/signup", {
+      const response = await axios.post(`${API_BASE_URL}/auth/signup`, {
         name: trimmedName,
         email: trimmedEmail,
         password: formData.password,

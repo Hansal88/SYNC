@@ -5,6 +5,8 @@ import profileService from '../../services/profileService';
 import { useTheme } from '../../context/ThemeContext';
 import axios from 'axios';
 
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://YOUR_RENDER_BACKEND_URL.onrender.com';
+
 const TutorProfile = () => {
   const navigate = useNavigate();
   const { isDarkMode } = useTheme();
@@ -94,7 +96,7 @@ const TutorProfile = () => {
       setVerifySending(true);
       setVerifyError('');
       
-      const response = await axios.post('http://localhost:5000/api/auth/resend-otp', {
+      const response = await axios.post(`${API_BASE_URL}/auth/resend-otp`, {
         email: profileData.email,
       });
       
@@ -140,7 +142,7 @@ const TutorProfile = () => {
       setVerifyingEmail(true);
       setVerifyError('');
       
-      const response = await axios.post('http://localhost:5000/api/auth/verify-otp', {
+      const response = await axios.post(`${API_BASE_URL}/auth/verify-otp`, {
         email: profileData.email,
         otp: otpString,
       });

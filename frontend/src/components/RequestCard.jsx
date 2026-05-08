@@ -1,5 +1,7 @@
 import React from 'react';
+import { motion } from 'framer-motion';
 import { useTheme } from '../context/ThemeContext';
+import GlassCard from './GlassCard';
 
 const RequestCard = ({ request, onAccept, onReject, isLoading = false }) => {
   const { isDark } = useTheme();
@@ -11,13 +13,13 @@ const RequestCard = ({ request, onAccept, onReject, isLoading = false }) => {
   };
 
   return (
-    <div
-      className={`p-4 rounded-lg border-2 transition-all duration-200 hover:shadow-lg ${
-        isDark
-          ? 'border-slate-700 bg-slate-800 hover:bg-slate-700'
-          : 'border-gray-200 bg-white hover:bg-gray-50'
-      }`}
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      whileHover={{ scale: 1.02 }}
+      transition={{ duration: 0.2 }}
     >
+      <GlassCard className="p-4">
       {/* Header - Learner Info */}
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-3">
@@ -139,7 +141,8 @@ const RequestCard = ({ request, onAccept, onReject, isLoading = false }) => {
           ✓ Request Accepted
         </div>
       )}
-    </div>
+      </GlassCard>
+    </motion.div>
   );
 };
 

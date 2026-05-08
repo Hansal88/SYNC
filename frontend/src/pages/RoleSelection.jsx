@@ -3,6 +3,8 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { BookOpen, GraduationCap, ArrowRight } from 'lucide-react';
 import axios from 'axios';
 
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://YOUR_RENDER_BACKEND_URL.onrender.com';
+
 const RoleSelection = () => {
   const navigate = useNavigate();
   const location = useLocation();
@@ -44,7 +46,7 @@ const RoleSelection = () => {
       }
 
       await axios.put(
-        `http://localhost:5000/api/users/${userId}/role`,
+        `${API_BASE_URL}/users/${userId}/role`,
         updateData,
         {
           headers: {

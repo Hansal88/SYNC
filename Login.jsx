@@ -3,6 +3,8 @@ import axios from 'axios';
 import { useNavigate, Link } from 'react-router-dom';
 import { Eye, EyeOff, Lock, Mail, AlertCircle } from "lucide-react";
 
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://YOUR_RENDER_BACKEND_URL.onrender.com';
+
 const Login = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -29,7 +31,7 @@ const Login = () => {
     }
 
     try {
-      const res = await axios.post('http://localhost:5000/api/auth/login', { 
+      const res = await axios.post(`${API_BASE_URL}/auth/login`, { 
         email: email.trim(), 
         password: password 
       });

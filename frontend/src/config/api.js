@@ -1,5 +1,6 @@
-// API Base URL
-export const API_BASE_URL = 'http://localhost:5000/api';
+const BACKEND_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://sync-4ges.onrender.com';
+export const API_BASE_URL = 'https://sync-4ges.onrender.com/api';
+export const BACKEND_URL = 'https://sync-4ges.onrender.com';
 
 // User endpoints
 export const USER_ENDPOINTS = {

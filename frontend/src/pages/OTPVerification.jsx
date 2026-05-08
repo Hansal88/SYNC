@@ -3,6 +3,8 @@ import axios from "axios";
 import { useNavigate, useLocation } from "react-router-dom";
 import { Mail, Lock, RefreshCw, Check, AlertCircle, Loader, BookOpen, GraduationCap } from "lucide-react";
 
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://YOUR_RENDER_BACKEND_URL.onrender.com';
+
 const OTPVerification = () => {
   const navigate = useNavigate();
   const location = useLocation();
@@ -128,7 +130,7 @@ const OTPVerification = () => {
       console.log('🔐 [OTP VERIFY] Verifying OTP for email:', email);
       console.log('🔐 [OTP VERIFY] OTP entered:', otpString);
       
-      const response = await axios.post("http://localhost:5000/api/auth/verify-otp", {
+      const response = await axios.post(`${API_BASE_URL}/auth/verify-otp`, {
         email: email,
         otp: otpString,
       });
@@ -200,7 +202,7 @@ const OTPVerification = () => {
       }
 
       await axios.put(
-        `http://localhost:5000/api/users/${userId}/role`,
+        `${API_BASE_URL}/users/${userId}/role`,
         updateData,
         {
           headers: {
@@ -240,7 +242,7 @@ const OTPVerification = () => {
     setSuccess("");
 
     try {
-      await axios.post("http://localhost:5000/api/auth/resend-otp", {
+      await axios.post(`${API_BASE_URL}/auth/resend-otp`, {
         email: email,
       });
 

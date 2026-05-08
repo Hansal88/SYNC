@@ -116,8 +116,9 @@ export function useFileUpload() {
 
         // Start upload with full URL
         const conversationPath = conversationId.replace(/\//g, '_').replace(/\:/g, '_');
-        const uploadUrl = `http://localhost:5000/api/messages/upload/${encodeURIComponent(conversationPath)}`;
+        const uploadUrl = `${import.meta.env.VITE_API_BASE_URL || 'https://YOUR_RENDER_BACKEND_URL.onrender.com'}/api/messages/upload/${encodeURIComponent(conversationPath)}`;
         xhr.open('POST', uploadUrl);
+        xhr.withCredentials = true;
         xhr.setRequestHeader('Authorization', `Bearer ${token}`);
         console.log('📤 Uploading to:', uploadUrl);
         xhr.send(formData);

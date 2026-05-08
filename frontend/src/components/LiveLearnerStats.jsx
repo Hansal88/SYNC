@@ -1,6 +1,8 @@
 import React from 'react';
+import { motion } from 'framer-motion';
 import { useTheme } from '../context/ThemeContext';
 import { useRequests } from '../context/RequestContext';
+import GlassCard from './GlassCard';
 
 const LiveLearnerStats = () => {
   const { isDarkMode } = useTheme();
@@ -11,9 +13,7 @@ const LiveLearnerStats = () => {
   ).length;
 
   return (
-    <div
-      className={`rounded-lg border-2 p-4 ${isDarkMode ? 'border-slate-700 bg-transparent' : 'border-blue-200 bg-transparent'}`}
-    >
+    <GlassCard className="rounded-lg p-4">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
@@ -45,33 +45,42 @@ const LiveLearnerStats = () => {
       </div>
 
       {/* Stats View */}
-      <div className={`mt-4 space-y-3 border-t-2 pt-4 ${isDarkMode ? 'border-slate-600' : 'border-blue-100'}`}>
-          <div
-            className={`flex items-center justify-between p-3 rounded-lg ${isDarkMode ? 'bg-slate-800' : 'bg-blue-50'}`}
+      <motion.div
+        className={`mt-4 space-y-3 border-t-2 pt-4 ${isDarkMode ? 'border-slate-600' : 'border-blue-100'}`}
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ delay: 0.2 }}
+      >
+        <motion.div
+          className={`flex items-center justify-between p-3 rounded-lg ${isDarkMode ? 'bg-slate-800' : 'bg-blue-50'}`}
+          whileHover={{ scale: 1.02 }}
+          transition={{ duration: 0.2 }}
+        >
+          <span className={isDarkMode ? 'text-white' : 'text-slate-900'}>
+            🟢 Online Now
+          </span>
+          <span
+            className={`font-bold text-lg ${isDarkMode ? 'text-white' : 'text-slate-900'}`}
           >
-            <span className={isDarkMode ? 'text-white' : 'text-slate-900'}>
-              🟢 Online Now
-            </span>
-            <span
-              className={`font-bold text-lg ${isDarkMode ? 'text-white' : 'text-slate-900'}`}
-            >
-              {liveStats.onlineLearners}
-            </span>
-          </div>
-          <div
-            className={`flex items-center justify-between p-3 rounded-lg ${isDarkMode ? 'bg-slate-800' : 'bg-blue-50'}`}
+            {liveStats.onlineLearners}
+          </span>
+        </motion.div>
+        <motion.div
+          className={`flex items-center justify-between p-3 rounded-lg ${isDarkMode ? 'bg-slate-800' : 'bg-blue-50'}`}
+          whileHover={{ scale: 1.02 }}
+          transition={{ duration: 0.2 }}
+        >
+          <span className={isDarkMode ? 'text-white' : 'text-slate-900'}>
+            ⏳ Waiting Requests
+          </span>
+          <span
+            className={`font-bold text-lg ${isDarkMode ? 'text-white' : 'text-slate-900'}`}
           >
-            <span className={isDarkMode ? 'text-white' : 'text-slate-900'}>
-              ⏳ Waiting Requests
-            </span>
-            <span
-              className={`font-bold text-lg ${isDarkMode ? 'text-white' : 'text-slate-900'}`}
-            >
-              {pendingRequests}
-            </span>
-          </div>
-          </div>
-    </div>
+            {pendingRequests}
+          </span>
+        </motion.div>
+      </motion.div>
+    </GlassCard>
   );
 };
 

@@ -10,129 +10,110 @@ const router = express.Router();
 POST /api/ai-chat/send
 */
 router.post('/send', verifyToken, async (req, res) => {
-try {
+  try {
+    const { message, role } = req.body;
+    const userId = req.userId;
 
-```
-const { message, role } = req.body;
-const userId = req.userId;
+    if (!message) {
+      return res.status(400).json({ message: 'Message is required' });
+    }
 
-if (!message) {
-  return res.status(400).json({ message: 'Message is required' });
-}
+    let chat = await AIChat.findOne({ userId });
 
-let chat = await AIChat.findOne({ userId });
+    if (!chat) {
+      chat = new AIChat({
+        userId,
+        messages: []
+      });
+    }
 
-if (!chat) {
-  chat = new AIChat({
-    userId,
-    messages: []
-  });
-}
+    chat.messages.push({
+      role: 'user',
+      content: message
+    });
 
-chat.messages.push({
-  role: 'user',
-  content: message
-});
+    /*
+    ===== Tutor Recommendation Logic =====
+    */
 
-/*
-===== Tutor Recommendation Logic =====
-*/
+    let tutors = [];
 
-let tutors = [];
+    if (role === "learner") {
+      const keywords = message.toLowerCase();
 
-if (role === "learner") {
+      const tutorDocs = await Tutor.find({
+        skills: { $regex: keywords, $options: "i" }
+      })
+        .limit(5)
+        .select("name skills rating bio");
 
-  const keywords = message.toLowerCase();
+      tutors = tutorDocs.map(t => ({
+        name: t.name,
+        skills: t.skills,
+        rating: t.rating,
+        bio: t.bio
+      }));
+    }
 
-  const tutorDocs = await Tutor.find({
-    skills: { $regex: keywords, $options: "i" }
-  })
-    .limit(5)
-    .select("name skills rating bio");
+    /*
+    ===== Send to n8n =====
+    */
 
-  tutors = tutorDocs.map(t => ({
-    name: t.name,
-    skills: t.skills,
-    rating: t.rating,
-    bio: t.bio
-  }));
-}
+    const response = await axios.post(
+      process.env.N8N_WEBHOOK_URL,
+      {
+        message,
+        role,
+        tutors
+      }
+    );
 
-/*
-===== Send to n8n =====
-*/
+    const aiText =
+      response.data.text ||
+      response.data.reply ||
+      response.data.response ||
+      "AI could not generate a response.";
 
-const response = await axios.post(
-  process.env.N8N_WEBHOOK_URL,
-  {
-    message,
-    role,
-    tutors
+    chat.messages.push({
+      role: 'assistant',
+      content: aiText
+    });
+
+    await chat.save();
+
+    res.json({
+      response: aiText
+    });
+  } catch (error) {
+    console.error("AI Chat Error:", error);
+
+    res.status(500).json({
+      message: "Internal server error"
+    });
   }
-);
-
-const aiText =
-  response.data.text ||
-  response.data.reply ||
-  response.data.response ||
-  "AI could not generate a response.";
-
-chat.messages.push({
-  role: 'assistant',
-  content: aiText
-});
-
-await chat.save();
-
-res.json({
-  response: aiText
-});
-```
-
-} catch (error) {
-
-```
-console.error("AI Chat Error:", error);
-
-res.status(500).json({
-  message: "Internal server error"
-});
-```
-
-}
 });
 
 /*
 GET CHAT HISTORY
 */
 router.get('/history', verifyToken, async (req, res) => {
+  try {
+    const chat = await AIChat.findOne({ userId: req.userId });
 
-try {
+    if (!chat) {
+      return res.json({ messages: [] });
+    }
 
-```
-const chat = await AIChat.findOne({ userId: req.userId });
+    res.json({
+      messages: chat.messages
+    });
+  } catch (error) {
+    console.error(error);
 
-if (!chat) {
-  return res.json({ messages: [] });
-}
-
-res.json({
-  messages: chat.messages
-});
-```
-
-} catch (error) {
-
-```
-console.error(error);
-
-res.status(500).json({
-  message: "Internal server error"
-});
-```
-
-}
-
+    res.status(500).json({
+      message: "Internal server error"
+    });
+  }
 });
 
 module.exports = router;
